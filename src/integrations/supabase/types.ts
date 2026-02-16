@@ -61,6 +61,7 @@ export type Database = {
           is_read: boolean
           is_resolved: boolean
           priority: string
+          project_id: string | null
           resolved_at: string | null
           resolved_by: string | null
           source_task_id: string | null
@@ -79,6 +80,7 @@ export type Database = {
           is_read?: boolean
           is_resolved?: boolean
           priority?: string
+          project_id?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
           source_task_id?: string | null
@@ -97,6 +99,7 @@ export type Database = {
           is_read?: boolean
           is_resolved?: boolean
           priority?: string
+          project_id?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
           source_task_id?: string | null
@@ -110,6 +113,13 @@ export type Database = {
             columns: ["facade_id"]
             isOneToOne: false
             referencedRelation: "facades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alerts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
           {
@@ -131,6 +141,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          project_id: string | null
           specialization: string | null
         }
         Insert: {
@@ -142,6 +153,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          project_id?: string | null
           specialization?: string | null
         }
         Update: {
@@ -153,6 +165,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          project_id?: string | null
           specialization?: string | null
         }
         Relationships: [
@@ -161,6 +174,13 @@ export type Database = {
             columns: ["facade_id"]
             isOneToOne: false
             referencedRelation: "facades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crews_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -176,6 +196,7 @@ export type Database = {
           id: string
           name: string
           parsed_text: string | null
+          project_id: string | null
           uploaded_by: string | null
         }
         Insert: {
@@ -188,6 +209,7 @@ export type Database = {
           id?: string
           name: string
           parsed_text?: string | null
+          project_id?: string | null
           uploaded_by?: string | null
         }
         Update: {
@@ -200,9 +222,18 @@ export type Database = {
           id?: string
           name?: string
           parsed_text?: string | null
+          project_id?: string | null
           uploaded_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ecosystem_tasks: {
         Row: {
@@ -223,6 +254,7 @@ export type Database = {
           planned_date: string | null
           priority: string
           progress: number
+          project_id: string | null
           recipient: string | null
           responsible: string | null
           status: string
@@ -248,6 +280,7 @@ export type Database = {
           planned_date?: string | null
           priority?: string
           progress?: number
+          project_id?: string | null
           recipient?: string | null
           responsible?: string | null
           status?: string
@@ -273,6 +306,7 @@ export type Database = {
           planned_date?: string | null
           priority?: string
           progress?: number
+          project_id?: string | null
           recipient?: string | null
           responsible?: string | null
           status?: string
@@ -288,6 +322,13 @@ export type Database = {
             referencedRelation: "facades"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ecosystem_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
         ]
       }
       facades: {
@@ -298,6 +339,7 @@ export type Database = {
           floors_count: number
           id: string
           name: string
+          project_id: string | null
           total_modules: number
         }
         Insert: {
@@ -307,6 +349,7 @@ export type Database = {
           floors_count?: number
           id?: string
           name: string
+          project_id?: string | null
           total_modules?: number
         }
         Update: {
@@ -316,9 +359,18 @@ export type Database = {
           floors_count?: number
           id?: string
           name?: string
+          project_id?: string | null
           total_modules?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "facades_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       floors: {
         Row: {
@@ -394,6 +446,7 @@ export type Database = {
           on_site: number
           order_date: string | null
           ordered: number
+          project_id: string | null
           shipped: number
           status: string
           supplier: string | null
@@ -412,6 +465,7 @@ export type Database = {
           on_site?: number
           order_date?: string | null
           ordered?: number
+          project_id?: string | null
           shipped?: number
           status?: string
           supplier?: string | null
@@ -430,6 +484,7 @@ export type Database = {
           on_site?: number
           order_date?: string | null
           ordered?: number
+          project_id?: string | null
           shipped?: number
           status?: string
           supplier?: string | null
@@ -437,7 +492,15 @@ export type Database = {
           unit?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "materials_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       plan_fact: {
         Row: {
@@ -451,6 +514,7 @@ export type Database = {
           notes: string | null
           photo_urls: string[] | null
           plan_value: number
+          project_id: string | null
           reported_by: string | null
           updated_at: string
           week_number: number
@@ -467,6 +531,7 @@ export type Database = {
           notes?: string | null
           photo_urls?: string[] | null
           plan_value?: number
+          project_id?: string | null
           reported_by?: string | null
           updated_at?: string
           week_number: number
@@ -483,6 +548,7 @@ export type Database = {
           notes?: string | null
           photo_urls?: string[] | null
           plan_value?: number
+          project_id?: string | null
           reported_by?: string | null
           updated_at?: string
           week_number?: number
@@ -501,6 +567,13 @@ export type Database = {
             columns: ["floor_id"]
             isOneToOne: false
             referencedRelation: "floors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_fact_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
           {
@@ -536,6 +609,99 @@ export type Database = {
           pin_hash?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          address: string | null
+          city: string | null
+          client_account: string | null
+          client_actual_address: string | null
+          client_bank: string | null
+          client_director: string | null
+          client_email: string | null
+          client_inn: string | null
+          client_kpp: string | null
+          client_legal_address: string | null
+          client_name: string | null
+          client_ogrn: string | null
+          client_phone: string | null
+          code: string | null
+          contacts: Json | null
+          created_at: string
+          created_by: string | null
+          duration_days: number | null
+          end_date: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          name: string
+          photo_url: string | null
+          start_date: string | null
+          status: string
+          updated_at: string
+          work_type: string
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          client_account?: string | null
+          client_actual_address?: string | null
+          client_bank?: string | null
+          client_director?: string | null
+          client_email?: string | null
+          client_inn?: string | null
+          client_kpp?: string | null
+          client_legal_address?: string | null
+          client_name?: string | null
+          client_ogrn?: string | null
+          client_phone?: string | null
+          code?: string | null
+          contacts?: Json | null
+          created_at?: string
+          created_by?: string | null
+          duration_days?: number | null
+          end_date?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          photo_url?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          work_type?: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          client_account?: string | null
+          client_actual_address?: string | null
+          client_bank?: string | null
+          client_director?: string | null
+          client_email?: string | null
+          client_inn?: string | null
+          client_kpp?: string | null
+          client_legal_address?: string | null
+          client_name?: string | null
+          client_ogrn?: string | null
+          client_phone?: string | null
+          code?: string | null
+          contacts?: Json | null
+          created_at?: string
+          created_by?: string | null
+          duration_days?: number | null
+          end_date?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          photo_url?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          work_type?: string
         }
         Relationships: []
       }
@@ -666,6 +832,7 @@ export type Database = {
           facade_id: string | null
           id: string
           name: string
+          project_id: string | null
           section: string
           sort_number: number | null
           start_date: string | null
@@ -681,6 +848,7 @@ export type Database = {
           facade_id?: string | null
           id?: string
           name: string
+          project_id?: string | null
           section: string
           sort_number?: number | null
           start_date?: string | null
@@ -696,6 +864,7 @@ export type Database = {
           facade_id?: string | null
           id?: string
           name?: string
+          project_id?: string | null
           section?: string
           sort_number?: number | null
           start_date?: string | null
@@ -710,6 +879,13 @@ export type Database = {
             columns: ["facade_id"]
             isOneToOne: false
             referencedRelation: "facades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_types_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
