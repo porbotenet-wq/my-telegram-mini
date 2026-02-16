@@ -116,7 +116,8 @@ const CreateProjectWizard = ({ onBack, onCreated }: Props) => {
 
     setUploading(true);
     setDocName(file.name);
-    const filePath = `${crypto.randomUUID()}-${file.name}`;
+    const ext = file.name.split(".").pop()?.toLowerCase() || "pdf";
+    const filePath = `${crypto.randomUUID()}.${ext}`;
 
     try {
       const { error: uploadError } = await supabase.storage
