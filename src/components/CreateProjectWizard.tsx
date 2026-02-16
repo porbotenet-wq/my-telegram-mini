@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { FileUp, Loader2, Sparkles, CheckCircle } from "lucide-react";
 
 interface Contact {
   role: string;
@@ -82,8 +85,14 @@ const Field = ({ label, value, onChange, placeholder, type = "text" }: {
 );
 
 const CreateProjectWizard = ({ onBack, onCreated }: Props) => {
+  const { toast } = useToast();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState(1);
   const [data, setData] = useState<ProjectData>(emptyProject);
+  const [uploading, setUploading] = useState(false);
+  const [parsing, setParsing] = useState(false);
+  const [docName, setDocName] = useState<string | null>(null);
+  const [filled, setFilled] = useState(false);
 
   const upd = (field: keyof ProjectData, val: string) =>
     setData((d) => ({ ...d, [field]: val }));
@@ -101,8 +110,85 @@ const CreateProjectWizard = ({ onBack, onCreated }: Props) => {
       contacts: [...d.contacts, { role: "", name: "", phone: "", email: "" }],
     }));
 
+  const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowed = ["application/pdf", "image/png", "image/jpeg"];
+    if (!allowed.includes(file.type)) {
+      toast({ title: "Ошибка", description: "Поддерживаются PDF, PNG, JPEG", variant: "destructive" });
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast({ title: "Ошибка", description: "Максимум 20 МБ", variant: "destructive" });
+      return;
+    }
+
+    setUploading(true);
+    setDocName(file.name);
+    const filePath = `${crypto.randomUUID()}-${file.name}`;
+
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from("project-documents")
+        .upload(filePath, file);
+      if (uploadError) throw uploadError;
+
+      setUploading(false);
+      setParsing(true);
+
+      const { data: parseResult, error: parseError } = await supabase.functions.invoke(
+        "parse-project-document",
+        { body: { file_path: filePath } }
+      );
+
+      if (parseError) throw parseError;
+
+      if (parseResult?.success && parseResult.project) {
+        const p = parseResult.project;
+        setData((prev) => ({
+          ...prev,
+          name: p.name || prev.name,
+          code: p.code || prev.code,
+          address: p.address || prev.address,
+          city: p.city || prev.city,
+          client_name: p.client_name || prev.client_name,
+          client_inn: p.client_inn || prev.client_inn,
+          client_director: p.client_director || prev.client_director,
+          client_phone: p.client_phone || prev.client_phone,
+          client_email: p.client_email || prev.client_email,
+          client_legal_address: p.client_legal_address || prev.client_legal_address,
+          client_actual_address: p.client_actual_address || prev.client_actual_address,
+          client_bank: p.client_bank || prev.client_bank,
+          client_account: p.client_account || prev.client_account,
+          work_type: (["nvf", "spk", "both"].includes(p.work_type) ? p.work_type : prev.work_type) as ProjectData["work_type"],
+          start_date: p.start_date || prev.start_date,
+          end_date: p.end_date || prev.end_date,
+          contacts: p.contacts?.length > 0
+            ? p.contacts.map((c: any) => ({
+                role: c.role || "",
+                name: c.name || "",
+                phone: c.phone || "",
+                email: c.email || "",
+              }))
+            : prev.contacts,
+        }));
+        setFilled(true);
+        toast({ title: "✨ Данные извлечены", description: "Поля заполнены из документа. Проверьте и скорректируйте." });
+      } else {
+        throw new Error(parseResult?.error || "Не удалось распознать документ");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Ошибка обработки";
+      toast({ title: "Ошибка", description: msg, variant: "destructive" });
+    } finally {
+      setUploading(false);
+      setParsing(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
   const handleCreate = () => {
-    // TODO: Save to Supabase, auto-generate tasks & ГПР
     onCreated("new-id");
   };
 
@@ -138,6 +224,56 @@ const CreateProjectWizard = ({ onBack, onCreated }: Props) => {
         {/* Step 1: Object Info */}
         {step === 1 && (
           <div className="animate-fade-in">
+            {/* Document upload for auto-fill */}
+            <div className="mb-4">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-t3 mb-2 flex items-center gap-2">
+                <Sparkles className="h-3 w-3 text-primary" /> Создать из документа
+                <span className="flex-1 h-px bg-border" />
+              </div>
+              <div
+                className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-all ${
+                  filled
+                    ? "border-primary/40 bg-primary/5"
+                    : "border-border bg-bg2 hover:border-primary/30"
+                }`}
+                onClick={() => !uploading && !parsing && fileRef.current?.click()}
+              >
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg"
+                  className="hidden"
+                  onChange={handleDocUpload}
+                />
+                {uploading ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mx-auto text-primary animate-spin" />
+                    <p className="text-[10px] text-t2 mt-1.5 font-semibold">Загрузка файла...</p>
+                  </>
+                ) : parsing ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mx-auto text-primary animate-spin" />
+                    <p className="text-[10px] text-primary mt-1.5 font-semibold">✨ AI анализирует документ...</p>
+                    <p className="text-[9px] text-t3 mt-0.5">{docName}</p>
+                  </>
+                ) : filled ? (
+                  <>
+                    <CheckCircle className="h-5 w-5 mx-auto text-primary" />
+                    <p className="text-[10px] text-primary mt-1.5 font-semibold">Данные извлечены из {docName}</p>
+                    <p className="text-[9px] text-t3 mt-0.5">Нажмите для загрузки другого документа</p>
+                  </>
+                ) : (
+                  <>
+                    <FileUp className="h-5 w-5 mx-auto text-t3" />
+                    <p className="text-[10px] text-t2 mt-1.5 font-semibold">
+                      Загрузите договор, КП или спецификацию
+                    </p>
+                    <p className="text-[9px] text-t3 mt-0.5">AI заполнит карточку автоматически • PDF, PNG, JPEG до 20 МБ</p>
+                  </>
+                )}
+              </div>
+            </div>
+
             <div className="text-[10px] font-bold uppercase tracking-wider text-t3 mb-3 flex items-center gap-2">
               Информация об объекте <span className="flex-1 h-px bg-border" />
             </div>
@@ -244,7 +380,6 @@ const CreateProjectWizard = ({ onBack, onCreated }: Props) => {
               ))}
             </div>
 
-            {/* Auto-generation info */}
             <div className="bg-bg2 border border-border rounded-lg p-3">
               <div className="text-[10px] font-bold uppercase tracking-wider text-t3 mb-2">
                 🚀 При создании автоматически
@@ -256,10 +391,6 @@ const CreateProjectWizard = ({ onBack, onCreated }: Props) => {
                 <div>✅ Материалы и спецификации</div>
                 <div>✅ Бригады и план-факт</div>
               </div>
-            </div>
-
-            <div className="mt-3 text-[10px] text-t3 bg-bg1 border border-border rounded-sm p-2.5">
-              💡 Также можно сформировать ГПР из загруженного документа РД или Спецификации
             </div>
           </div>
         )}
