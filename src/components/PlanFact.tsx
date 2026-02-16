@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import PhotoUpload from "@/components/PhotoUpload";
 
 interface PlanFactProps {
   projectId: string;
@@ -77,6 +78,31 @@ const PlanFact = ({ projectId }: PlanFactProps) => {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Photo reports per record */}
+      {records.length > 0 && (
+        <div className="bg-bg2 border border-border rounded-lg p-3.5 mb-2.5">
+          <span className="text-[11px] font-bold uppercase tracking-wide text-t3">Фото-отчёты</span>
+          <div className="mt-3 space-y-2">
+            {records.slice(0, 5).map((r) => (
+              <div key={r.id} className="border-b border-border pb-2 last:border-0">
+                <div className="text-[10px] text-t2 mb-1 font-mono">
+                  {new Date(r.date).toLocaleDateString("ru-RU")} · Н{r.week_number}
+                </div>
+                <PhotoUpload
+                  photos={r.photo_urls || []}
+                  onPhotosChange={async (urls) => {
+                    await supabase.from("plan_fact").update({ photo_urls: urls }).eq("id", r.id);
+                    setRecords(prev => prev.map(rec => rec.id === r.id ? { ...rec, photo_urls: urls } : rec));
+                  }}
+                  folder={`plan-fact/${r.id}`}
+                  maxPhotos={5}
+                />
+              </div>
+            ))}
           </div>
         </div>
       )}

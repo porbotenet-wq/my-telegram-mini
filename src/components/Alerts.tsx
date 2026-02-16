@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import PhotoUpload from "@/components/PhotoUpload";
 
 interface AlertsProps {
   projectId: string;
@@ -96,18 +97,31 @@ const Alerts = ({ projectId }: AlertsProps) => {
         const pm = priorityMap[a.priority] || priorityMap.normal;
         const icon = iconMap[a.priority] || "ℹ️";
         return (
-          <div key={a.id} className={`flex gap-2 p-2.5 bg-bg1 rounded-sm mb-1.5 border-l-[3px] ${pm.border}`}>
-            <span className="text-base">{icon}</span>
-            <div className="flex-1">
-              <div className="text-[11px] font-semibold mb-0.5">{a.title}</div>
-              {a.description && <div className="text-[10px] text-t2 leading-snug">{a.description}</div>}
-              <div className="font-mono text-[9px] text-t3 mt-0.5">
-                {new Date(a.created_at).toLocaleString("ru-RU", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}
+          <div key={a.id} className={`bg-bg1 rounded-sm mb-1.5 border-l-[3px] ${pm.border}`}>
+            <div className="flex gap-2 p-2.5">
+              <span className="text-base">{icon}</span>
+              <div className="flex-1">
+                <div className="text-[11px] font-semibold mb-0.5">{a.title}</div>
+                {a.description && <div className="text-[10px] text-t2 leading-snug">{a.description}</div>}
+                <div className="font-mono text-[9px] text-t3 mt-0.5">
+                  {new Date(a.created_at).toLocaleString("ru-RU", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}
+                </div>
               </div>
+              {a.is_resolved && (
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-primary/12 text-primary self-start">✅</span>
+              )}
             </div>
-            {a.is_resolved && (
-              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-primary/12 text-primary self-start">✅</span>
-            )}
+            <div className="px-2.5 pb-2">
+              <PhotoUpload
+                photos={(a as any).photo_urls || []}
+                onPhotosChange={async (urls) => {
+                  await supabase.from("alerts").update({ photo_urls: urls }).eq("id", a.id);
+                  setAlerts(prev => prev.map(al => al.id === a.id ? { ...al, photo_urls: urls } : al));
+                }}
+                folder={`alerts/${a.id}`}
+                maxPhotos={3}
+              />
+            </div>
           </div>
         );
       })}
