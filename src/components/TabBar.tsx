@@ -1,9 +1,11 @@
 interface TabBarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
+  showProjectCard?: boolean;
 }
 
 const tabs = [
+  { id: "card", label: "📋 Объект" },
   { id: "dash", label: "📊 Дашборд" },
   { id: "floors", label: "🏗️ Этажи" },
   { id: "pf", label: "📋 План-Факт" },
@@ -13,10 +15,12 @@ const tabs = [
   { id: "alerts", label: "🔔 Алерты" },
 ];
 
-const TabBar = ({ activeTab, onTabChange }: TabBarProps) => {
+const TabBar = ({ activeTab, onTabChange, showProjectCard }: TabBarProps) => {
+  const visibleTabs = showProjectCard ? tabs : tabs.filter((t) => t.id !== "card");
+
   return (
     <div className="flex gap-0.5 px-2.5 py-1.5 bg-bg1 overflow-x-auto scrollbar-none">
-      {tabs.map((tab) => (
+      {visibleTabs.map((tab) => (
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
