@@ -13,6 +13,7 @@ import ProjectList from "@/components/ProjectList";
 import ProjectCard from "@/components/ProjectCard";
 import CreateProjectWizard from "@/components/CreateProjectWizard";
 import SheetsSync from "@/components/SheetsSync";
+import Documents from "@/components/Documents";
 
 const tabComponents: Record<string, React.FC> = {
   card: ProjectCard as unknown as React.FC,
@@ -24,6 +25,7 @@ const tabComponents: Record<string, React.FC> = {
   gpr: GPR,
   alerts: Alerts,
   sheets: SheetsSync,
+  docs: Documents,
 };
 
 type Screen = "projects" | "create" | "project";
