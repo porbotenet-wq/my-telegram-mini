@@ -38,22 +38,11 @@ const defaultContacts: Contact[] = [
 ];
 
 const emptyProject: ProjectData = {
-  name: "",
-  code: "",
-  address: "",
-  city: "",
-  client_name: "",
-  client_inn: "",
-  client_director: "",
-  client_phone: "",
-  client_email: "",
-  client_legal_address: "",
-  client_actual_address: "",
-  client_bank: "",
-  client_account: "",
-  work_type: "spk",
-  start_date: "",
-  end_date: "",
+  name: "", code: "", address: "", city: "",
+  client_name: "", client_inn: "", client_director: "",
+  client_phone: "", client_email: "", client_legal_address: "",
+  client_actual_address: "", client_bank: "", client_account: "",
+  work_type: "spk", start_date: "", end_date: "",
   contacts: [...defaultContacts],
 };
 
@@ -66,7 +55,7 @@ const steps = [
 
 interface Props {
   onBack: () => void;
-  onCreated: (id: string) => void;
+  onCreated: (id: string, name?: string) => void;
 }
 
 const Field = ({ label, value, onChange, placeholder, type = "text" }: {
@@ -93,6 +82,7 @@ const CreateProjectWizard = ({ onBack, onCreated }: Props) => {
   const [parsing, setParsing] = useState(false);
   const [docName, setDocName] = useState<string | null>(null);
   const [filled, setFilled] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const upd = (field: keyof ProjectData, val: string) =>
     setData((d) => ({ ...d, [field]: val }));
@@ -166,15 +156,12 @@ const CreateProjectWizard = ({ onBack, onCreated }: Props) => {
           end_date: p.end_date || prev.end_date,
           contacts: p.contacts?.length > 0
             ? p.contacts.map((c: any) => ({
-                role: c.role || "",
-                name: c.name || "",
-                phone: c.phone || "",
-                email: c.email || "",
+                role: c.role || "", name: c.name || "", phone: c.phone || "", email: c.email || "",
               }))
             : prev.contacts,
         }));
         setFilled(true);
-        toast({ title: "✨ Данные извлечены", description: "Поля заполнены из документа. Проверьте и скорректируйте." });
+        toast({ title: "✨ Данные извлечены", description: "Поля заполнены из документа." });
       } else {
         throw new Error(parseResult?.error || "Не удалось распознать документ");
       }
@@ -188,20 +175,61 @@ const CreateProjectWizard = ({ onBack, onCreated }: Props) => {
     }
   };
 
-  const handleCreate = () => {
-    onCreated("new-id");
+  const handleCreate = async () => {
+    if (!data.name.trim()) {
+      toast({ title: "Ошибка", description: "Укажите название объекта", variant: "destructive" });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const row = {
+          name: data.name,
+          code: data.code || null,
+          address: data.address || null,
+          city: data.city || null,
+          client_name: data.client_name || null,
+          client_inn: data.client_inn || null,
+          client_director: data.client_director || null,
+          client_phone: data.client_phone || null,
+          client_email: data.client_email || null,
+          client_legal_address: data.client_legal_address || null,
+          client_actual_address: data.client_actual_address || null,
+          client_bank: data.client_bank || null,
+          client_account: data.client_account || null,
+          work_type: data.work_type,
+          start_date: data.start_date || null,
+          end_date: data.end_date || null,
+          contacts: JSON.parse(JSON.stringify(data.contacts.filter(c => c.name || c.phone || c.email))),
+          status: "active",
+        };
+
+      const { data: inserted, error } = await supabase
+        .from("projects")
+        .insert(row)
+        .select("id, name")
+        .single();
+
+      if (error) throw error;
+
+      toast({ title: "🚀 Объект создан", description: data.name });
+      onCreated(inserted.id, inserted.name);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Ошибка сохранения";
+      toast({ title: "Ошибка", description: msg, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-background animate-fade-in">
-      {/* Header */}
       <div className="sticky top-0 z-50 bg-bg0/88 backdrop-blur-[20px] border-b border-border px-3.5 py-2.5 flex items-center justify-between">
         <button onClick={onBack} className="text-t2 text-[13px] hover:text-primary transition-colors">← Назад</button>
         <span className="text-[13px] font-bold">Новый объект</span>
         <div className="w-12" />
       </div>
 
-      {/* Steps indicator */}
       <div className="flex gap-0.5 px-2.5 py-2">
         {steps.map((s) => (
           <button
@@ -221,10 +249,8 @@ const CreateProjectWizard = ({ onBack, onCreated }: Props) => {
       </div>
 
       <div className="p-3.5">
-        {/* Step 1: Object Info */}
         {step === 1 && (
           <div className="animate-fade-in">
-            {/* Document upload for auto-fill */}
             <div className="mb-4">
               <div className="text-[10px] font-bold uppercase tracking-wider text-t3 mb-2 flex items-center gap-2">
                 <Sparkles className="h-3 w-3 text-primary" /> Создать из документа
@@ -232,19 +258,11 @@ const CreateProjectWizard = ({ onBack, onCreated }: Props) => {
               </div>
               <div
                 className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-all ${
-                  filled
-                    ? "border-primary/40 bg-primary/5"
-                    : "border-border bg-bg2 hover:border-primary/30"
+                  filled ? "border-primary/40 bg-primary/5" : "border-border bg-bg2 hover:border-primary/30"
                 }`}
                 onClick={() => !uploading && !parsing && fileRef.current?.click()}
               >
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept=".pdf,.png,.jpg,.jpeg"
-                  className="hidden"
-                  onChange={handleDocUpload}
-                />
+                <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg" className="hidden" onChange={handleDocUpload} />
                 {uploading ? (
                   <>
                     <Loader2 className="h-5 w-5 mx-auto text-primary animate-spin" />
@@ -265,9 +283,7 @@ const CreateProjectWizard = ({ onBack, onCreated }: Props) => {
                 ) : (
                   <>
                     <FileUp className="h-5 w-5 mx-auto text-t3" />
-                    <p className="text-[10px] text-t2 mt-1.5 font-semibold">
-                      Загрузите договор, КП или спецификацию
-                    </p>
+                    <p className="text-[10px] text-t2 mt-1.5 font-semibold">Загрузите договор, КП или спецификацию</p>
                     <p className="text-[9px] text-t3 mt-0.5">AI заполнит карточку автоматически • PDF, PNG, JPEG до 20 МБ</p>
                   </>
                 )}
@@ -285,19 +301,9 @@ const CreateProjectWizard = ({ onBack, onCreated }: Props) => {
               <Field label="Дата начала" value={data.start_date} onChange={(v) => upd("start_date", v)} type="date" />
               <Field label="Дата окончания" value={data.end_date} onChange={(v) => upd("end_date", v)} type="date" />
             </div>
-
-            {/* Photo placeholder */}
-            <div className="mb-2.5">
-              <div className="text-[9px] font-bold uppercase tracking-wider text-t3 mb-1">Фото объекта</div>
-              <div className="border-2 border-dashed border-border rounded-sm p-6 text-center hover:border-primary/25 transition-all cursor-pointer">
-                <div className="text-xl mb-1">📷</div>
-                <div className="text-[10px] text-t3">Нажмите для загрузки</div>
-              </div>
-            </div>
           </div>
         )}
 
-        {/* Step 2: Client */}
         {step === 2 && (
           <div className="animate-fade-in">
             <div className="text-[10px] font-bold uppercase tracking-wider text-t3 mb-3 flex items-center gap-2">
@@ -319,14 +325,10 @@ const CreateProjectWizard = ({ onBack, onCreated }: Props) => {
           </div>
         )}
 
-        {/* Step 3: Contacts */}
         {step === 3 && (
           <div className="animate-fade-in">
             <div className="text-[10px] font-bold uppercase tracking-wider text-t3 mb-3 flex items-center gap-2">
               Контакты и коммуникация <span className="flex-1 h-px bg-border" />
-            </div>
-            <div className="text-[10px] text-t2 mb-3">
-              Укажите ключевых участников проекта для коммуникации
             </div>
             {data.contacts.map((c, i) => (
               <div key={i} className="bg-bg1 border border-border rounded-sm p-2.5 mb-2">
@@ -338,37 +340,28 @@ const CreateProjectWizard = ({ onBack, onCreated }: Props) => {
                 </div>
               </div>
             ))}
-            <button
-              onClick={addContact}
-              className="w-full py-2 border border-dashed border-border rounded-sm text-[10px] text-t2 font-semibold hover:border-primary/25 hover:text-primary transition-all"
-            >
+            <button onClick={addContact} className="w-full py-2 border border-dashed border-border rounded-sm text-[10px] text-t2 font-semibold hover:border-primary/25 hover:text-primary transition-all">
               + Добавить контакт
             </button>
           </div>
         )}
 
-        {/* Step 4: Work Type */}
         {step === 4 && (
           <div className="animate-fade-in">
             <div className="text-[10px] font-bold uppercase tracking-wider text-t3 mb-3 flex items-center gap-2">
               Вид работ и запуск <span className="flex-1 h-px bg-border" />
             </div>
-            <div className="text-[10px] text-t2 mb-3">
-              Выберите тип фасадной системы. Задачи экосистемы и ГПР будут сформированы автоматически.
-            </div>
             <div className="grid grid-cols-1 gap-2 mb-4">
-              {[
-                { id: "spk" as const, icon: "🔲", title: "СПК — Светопрозрачные конструкции", desc: "Модули СПК, кронштейны, уплотнители, герметизация, сдача ТН" },
-                { id: "nvf" as const, icon: "🏗️", title: "НВФ — Навесной вентилируемый фасад", desc: "Подсистема, утепление, облицовка, ламели, ветрозащита" },
-                { id: "both" as const, icon: "🔀", title: "НВФ + СПК (комбинированный)", desc: "Оба вида работ на одном объекте" },
-              ].map((wt) => (
+              {([
+                { id: "spk" as const, icon: "🔲", title: "СПК", desc: "Модули СПК, кронштейны, уплотнители" },
+                { id: "nvf" as const, icon: "🏗️", title: "НВФ", desc: "Подсистема, утепление, облицовка" },
+                { id: "both" as const, icon: "🔀", title: "НВФ + СПК", desc: "Оба вида работ" },
+              ]).map((wt) => (
                 <button
                   key={wt.id}
                   onClick={() => setData((d) => ({ ...d, work_type: wt.id }))}
                   className={`text-left p-3.5 rounded-lg border transition-all ${
-                    data.work_type === wt.id
-                      ? "border-primary/40 bg-primary/8"
-                      : "border-border bg-bg1 hover:border-primary/20"
+                    data.work_type === wt.id ? "border-primary/40 bg-primary/8" : "border-border bg-bg1 hover:border-primary/20"
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
@@ -379,45 +372,22 @@ const CreateProjectWizard = ({ onBack, onCreated }: Props) => {
                 </button>
               ))}
             </div>
-
-            <div className="bg-bg2 border border-border rounded-lg p-3">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-t3 mb-2">
-                🚀 При создании автоматически
-              </div>
-              <div className="space-y-1 text-[10px] text-t2">
-                <div>✅ Экосистема задач (Административный, Проектный, Снабжение, Монтаж блоки)</div>
-                <div>✅ ГПР — График производства работ</div>
-                <div>✅ Структура фасадов и этажей</div>
-                <div>✅ Материалы и спецификации</div>
-                <div>✅ Бригады и план-факт</div>
-              </div>
-            </div>
           </div>
         )}
 
-        {/* Navigation */}
         <div className="flex gap-2 mt-4">
           {step > 1 && (
-            <button
-              onClick={() => setStep((s) => s - 1)}
-              className="flex-1 py-2.5 rounded-sm bg-bg1 border border-border text-t1 text-[11px] font-bold hover:bg-bg2 transition-all"
-            >
+            <button onClick={() => setStep((s) => s - 1)} className="flex-1 py-2.5 rounded-sm bg-bg1 border border-border text-t1 text-[11px] font-bold hover:bg-bg2 transition-all">
               ← Назад
             </button>
           )}
           {step < 4 ? (
-            <button
-              onClick={() => setStep((s) => s + 1)}
-              className="flex-1 py-2.5 rounded-sm bg-primary text-primary-foreground text-[11px] font-bold hover:brightness-110 transition-all"
-            >
+            <button onClick={() => setStep((s) => s + 1)} className="flex-1 py-2.5 rounded-sm bg-primary text-primary-foreground text-[11px] font-bold hover:brightness-110 transition-all">
               Далее →
             </button>
           ) : (
-            <button
-              onClick={handleCreate}
-              className="flex-1 py-2.5 rounded-sm bg-primary text-primary-foreground text-[11px] font-bold hover:brightness-110 transition-all"
-            >
-              🚀 Создать объект
+            <button onClick={handleCreate} disabled={saving} className="flex-1 py-2.5 rounded-sm bg-primary text-primary-foreground text-[11px] font-bold hover:brightness-110 transition-all disabled:opacity-50">
+              {saving ? "Сохранение..." : "🚀 Создать объект"}
             </button>
           )}
         </div>
