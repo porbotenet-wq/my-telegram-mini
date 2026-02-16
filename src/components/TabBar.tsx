@@ -14,6 +14,7 @@ const tabs = [
   { id: "gpr", label: "📆 ГПР" },
   { id: "alerts", label: "🔔 Алерты" },
   { id: "sheets", label: "📊 Sheets" },
+  { id: "docs", label: "📄 Документы" },
 ];
 
 const TabBar = ({ activeTab, onTabChange, showProjectCard }: TabBarProps) => {
