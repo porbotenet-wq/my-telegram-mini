@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface TopBarProps {
   projectName?: string;
@@ -6,6 +7,7 @@ interface TopBarProps {
 }
 
 const TopBar = ({ projectName, onBackToProjects }: TopBarProps) => {
+  const { displayName, signOut } = useAuth();
   const [time, setTime] = useState("");
 
   useEffect(() => {
@@ -28,7 +30,7 @@ const TopBar = ({ projectName, onBackToProjects }: TopBarProps) => {
         {onBackToProjects && (
           <button
             onClick={onBackToProjects}
-            className="text-t2 text-[11px] hover:text-primary transition-colors mr-1"
+            className="text-muted-foreground text-[11px] hover:text-primary transition-colors mr-1"
           >
             ← 
           </button>
@@ -40,9 +42,23 @@ const TopBar = ({ projectName, onBackToProjects }: TopBarProps) => {
           {projectName || "СИТИ 4"}
         </span>
       </div>
-      <div className="flex items-center gap-1.5">
-        <div className="w-[7px] h-[7px] rounded-full bg-primary shadow-[0_0_8px_hsl(163_100%_42%/0.25)] animate-pulse-dot" />
-        <span className="font-mono text-[10px] text-t2">{time}</span>
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5">
+          <div className="w-[7px] h-[7px] rounded-full bg-primary shadow-[0_0_8px_hsl(163_100%_42%/0.25)] animate-pulse-dot" />
+          <span className="font-mono text-[10px] text-muted-foreground">{time}</span>
+        </div>
+        {displayName && (
+          <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">
+            {displayName}
+          </span>
+        )}
+        <button
+          onClick={signOut}
+          className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
+          title="Выйти"
+        >
+          ⏻
+        </button>
       </div>
     </div>
   );
