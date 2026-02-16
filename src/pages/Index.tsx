@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import TopBar from "@/components/TopBar";
 import TabBar from "@/components/TabBar";
 import Dashboard from "@/components/Dashboard";
@@ -8,7 +9,7 @@ import Crew from "@/components/Crew";
 import Supply from "@/components/Supply";
 import GPR from "@/components/GPR";
 import Alerts from "@/components/Alerts";
-import LoginScreen from "@/components/LoginScreen";
+import AuthScreen from "@/components/AuthScreen";
 import ProjectList from "@/components/ProjectList";
 import ProjectCard from "@/components/ProjectCard";
 import CreateProjectWizard from "@/components/CreateProjectWizard";
@@ -18,22 +19,22 @@ import Documents from "@/components/Documents";
 type Screen = "projects" | "create" | "project";
 
 const Index = () => {
+  const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState("dash");
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [role, setRole] = useState("");
   const [screen, setScreen] = useState<Screen>("projects");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("Проект");
 
-  if (!loggedIn) {
+  if (loading) {
     return (
-      <LoginScreen
-        onLogin={(r) => {
-          setRole(r);
-          setLoggedIn(true);
-        }}
-      />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-muted-foreground text-sm animate-pulse">Загрузка...</div>
+      </div>
     );
+  }
+
+  if (!user) {
+    return <AuthScreen />;
   }
 
   if (screen === "projects") {
