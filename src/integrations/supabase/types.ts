@@ -676,6 +676,44 @@ export type Database = {
         }
         Relationships: []
       }
+      project_chats: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          name: string
+          project_id: string
+          sort_order: number | null
+          telegram_link: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          name: string
+          project_id: string
+          sort_order?: number | null
+          telegram_link: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          name?: string
+          project_id?: string
+          sort_order?: number | null
+          telegram_link?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_chats_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           address: string | null

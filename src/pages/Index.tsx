@@ -87,6 +87,7 @@ const Index = () => {
     <div className="min-h-screen bg-background relative">
       <TopBar
         projectName={projectName}
+        projectId={pid}
         onBackToProjects={() => setScreen("projects")}
       />
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} showProjectCard />
