@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 const roles = [
   { id: "director", icon: "🏗️", title: "Директор", sub: "Руководство" },
@@ -110,6 +111,13 @@ const LoginScreen = ({ onLogin }: LoginScreenProps) => {
       <div className="text-[10px] text-t3 mt-4">
         Демо-доступ: PIN <span className="font-mono font-bold text-t2">1234</span> для всех ролей
       </div>
+
+      <Link
+        to="/privacy"
+        className="text-[10px] text-t3 hover:text-primary transition-colors mt-3 underline underline-offset-2"
+      >
+        Политика конфиденциальности
+      </Link>
     </div>
   );
 };
