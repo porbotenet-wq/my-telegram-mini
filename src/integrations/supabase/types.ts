@@ -14,40 +14,93 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          document_id: string | null
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          document_id?: string | null
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          document_id?: string | null
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_chat_messages_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       alerts: {
         Row: {
+          category: string | null
           created_at: string
           created_by: string | null
           description: string | null
           facade_id: string | null
-          floor_id: string | null
+          floor_number: number | null
           id: string
           is_read: boolean
+          is_resolved: boolean
           priority: string
+          resolved_at: string | null
+          resolved_by: string | null
+          source_task_id: string | null
+          target_roles: Database["public"]["Enums"]["app_role"][] | null
           title: string
           type: string
         }
         Insert: {
+          category?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           facade_id?: string | null
-          floor_id?: string | null
+          floor_number?: number | null
           id?: string
           is_read?: boolean
+          is_resolved?: boolean
           priority?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          source_task_id?: string | null
+          target_roles?: Database["public"]["Enums"]["app_role"][] | null
           title: string
           type?: string
         }
         Update: {
+          category?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           facade_id?: string | null
-          floor_id?: string | null
+          floor_number?: number | null
           id?: string
           is_read?: boolean
+          is_resolved?: boolean
           priority?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          source_task_id?: string | null
+          target_roles?: Database["public"]["Enums"]["app_role"][] | null
           title?: string
           type?: string
         }
@@ -60,75 +113,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "alerts_floor_id_fkey"
-            columns: ["floor_id"]
+            foreignKeyName: "alerts_source_task_id_fkey"
+            columns: ["source_task_id"]
             isOneToOne: false
-            referencedRelation: "floors"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      crew_assignments: {
-        Row: {
-          created_at: string
-          crew_id: string
-          date: string
-          facade_id: string | null
-          floor_id: string | null
-          id: string
-          output_value: number
-          work_type_id: string | null
-          workers_count: number
-        }
-        Insert: {
-          created_at?: string
-          crew_id: string
-          date: string
-          facade_id?: string | null
-          floor_id?: string | null
-          id?: string
-          output_value?: number
-          work_type_id?: string | null
-          workers_count?: number
-        }
-        Update: {
-          created_at?: string
-          crew_id?: string
-          date?: string
-          facade_id?: string | null
-          floor_id?: string | null
-          id?: string
-          output_value?: number
-          work_type_id?: string | null
-          workers_count?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "crew_assignments_crew_id_fkey"
-            columns: ["crew_id"]
-            isOneToOne: false
-            referencedRelation: "crews"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "crew_assignments_facade_id_fkey"
-            columns: ["facade_id"]
-            isOneToOne: false
-            referencedRelation: "facades"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "crew_assignments_floor_id_fkey"
-            columns: ["floor_id"]
-            isOneToOne: false
-            referencedRelation: "floors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "crew_assignments_work_type_id_fkey"
-            columns: ["work_type_id"]
-            isOneToOne: false
-            referencedRelation: "work_types"
+            referencedRelation: "ecosystem_tasks"
             referencedColumns: ["id"]
           },
         ]
@@ -136,33 +124,53 @@ export type Database = {
       crews: {
         Row: {
           created_at: string
-          foreman: string | null
+          facade_id: string | null
+          foreman_name: string | null
+          foreman_user_id: string | null
           headcount: number
           id: string
+          is_active: boolean
           name: string
           specialization: string | null
         }
         Insert: {
           created_at?: string
-          foreman?: string | null
+          facade_id?: string | null
+          foreman_name?: string | null
+          foreman_user_id?: string | null
           headcount?: number
           id?: string
+          is_active?: boolean
           name: string
           specialization?: string | null
         }
         Update: {
           created_at?: string
-          foreman?: string | null
+          facade_id?: string | null
+          foreman_name?: string | null
+          foreman_user_id?: string | null
           headcount?: number
           id?: string
+          is_active?: boolean
           name?: string
           specialization?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "crews_facade_id_fkey"
+            columns: ["facade_id"]
+            isOneToOne: false
+            referencedRelation: "facades"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       documents: {
         Row: {
+          ai_summary: string | null
+          category: string | null
           created_at: string
+          file_size: number | null
           file_type: string
           file_url: string
           id: string
@@ -171,7 +179,10 @@ export type Database = {
           uploaded_by: string | null
         }
         Insert: {
+          ai_summary?: string | null
+          category?: string | null
           created_at?: string
+          file_size?: number | null
           file_type?: string
           file_url: string
           id?: string
@@ -180,7 +191,10 @@ export type Database = {
           uploaded_by?: string | null
         }
         Update: {
+          ai_summary?: string | null
+          category?: string | null
           created_at?: string
+          file_size?: number | null
           file_type?: string
           file_url?: string
           id?: string
@@ -190,21 +204,116 @@ export type Database = {
         }
         Relationships: []
       }
+      ecosystem_tasks: {
+        Row: {
+          assigned_to: string | null
+          block: string
+          code: string
+          created_at: string
+          department: string
+          dependency_ids: string | null
+          duration_days: number | null
+          facade_id: string | null
+          id: string
+          input_document: string | null
+          name: string
+          notes: string | null
+          notification_type: string | null
+          output_document: string | null
+          planned_date: string | null
+          priority: string
+          progress: number
+          recipient: string | null
+          responsible: string | null
+          status: string
+          task_number: number
+          trigger_text: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          block: string
+          code: string
+          created_at?: string
+          department: string
+          dependency_ids?: string | null
+          duration_days?: number | null
+          facade_id?: string | null
+          id?: string
+          input_document?: string | null
+          name: string
+          notes?: string | null
+          notification_type?: string | null
+          output_document?: string | null
+          planned_date?: string | null
+          priority?: string
+          progress?: number
+          recipient?: string | null
+          responsible?: string | null
+          status?: string
+          task_number: number
+          trigger_text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          block?: string
+          code?: string
+          created_at?: string
+          department?: string
+          dependency_ids?: string | null
+          duration_days?: number | null
+          facade_id?: string | null
+          id?: string
+          input_document?: string | null
+          name?: string
+          notes?: string | null
+          notification_type?: string | null
+          output_document?: string | null
+          planned_date?: string | null
+          priority?: string
+          progress?: number
+          recipient?: string | null
+          responsible?: string | null
+          status?: string
+          task_number?: number
+          trigger_text?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ecosystem_tasks_facade_id_fkey"
+            columns: ["facade_id"]
+            isOneToOne: false
+            referencedRelation: "facades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       facades: {
         Row: {
+          axes: string | null
+          code: string | null
           created_at: string
+          floors_count: number
           id: string
           name: string
           total_modules: number
         }
         Insert: {
+          axes?: string | null
+          code?: string | null
           created_at?: string
+          floors_count?: number
           id?: string
           name: string
           total_modules?: number
         }
         Update: {
+          axes?: string | null
+          code?: string | null
           created_at?: string
+          floors_count?: number
           id?: string
           name?: string
           total_modules?: number
@@ -213,29 +322,53 @@ export type Database = {
       }
       floors: {
         Row: {
+          brackets_fact: number
+          brackets_plan: number
+          elevation: string | null
           facade_id: string
           floor_number: number
           id: string
+          module_height: number | null
+          module_type: string | null
+          module_width: number | null
           modules_fact: number
           modules_plan: number
+          sealant_fact: number
+          sealant_plan: number
           status: string
           updated_at: string
         }
         Insert: {
+          brackets_fact?: number
+          brackets_plan?: number
+          elevation?: string | null
           facade_id: string
           floor_number: number
           id?: string
+          module_height?: number | null
+          module_type?: string | null
+          module_width?: number | null
           modules_fact?: number
           modules_plan?: number
+          sealant_fact?: number
+          sealant_plan?: number
           status?: string
           updated_at?: string
         }
         Update: {
+          brackets_fact?: number
+          brackets_plan?: number
+          elevation?: string | null
           facade_id?: string
           floor_number?: number
           id?: string
+          module_height?: number | null
+          module_type?: string | null
+          module_width?: number | null
           modules_fact?: number
           modules_plan?: number
+          sealant_fact?: number
+          sealant_plan?: number
           status?: string
           updated_at?: string
         }
@@ -249,93 +382,57 @@ export type Database = {
           },
         ]
       }
-      gpr_tasks: {
-        Row: {
-          created_at: string
-          end_date: string
-          facade_id: string | null
-          id: string
-          name: string
-          parent_id: string | null
-          progress: number
-          sort_order: number
-          start_date: string
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          end_date: string
-          facade_id?: string | null
-          id?: string
-          name: string
-          parent_id?: string | null
-          progress?: number
-          sort_order?: number
-          start_date: string
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          end_date?: string
-          facade_id?: string | null
-          id?: string
-          name?: string
-          parent_id?: string | null
-          progress?: number
-          sort_order?: number
-          start_date?: string
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "gpr_tasks_facade_id_fkey"
-            columns: ["facade_id"]
-            isOneToOne: false
-            referencedRelation: "facades"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "gpr_tasks_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "gpr_tasks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       materials: {
         Row: {
+          category: string | null
           deficit: number
+          eta: string | null
           id: string
-          in_stock: number
-          in_transit: number
+          in_production: number
+          installed: number
           name: string
+          on_site: number
+          order_date: string | null
+          ordered: number
+          shipped: number
           status: string
+          supplier: string | null
           total_required: number
           unit: string
           updated_at: string
         }
         Insert: {
+          category?: string | null
           deficit?: number
+          eta?: string | null
           id?: string
-          in_stock?: number
-          in_transit?: number
+          in_production?: number
+          installed?: number
           name: string
+          on_site?: number
+          order_date?: string | null
+          ordered?: number
+          shipped?: number
           status?: string
+          supplier?: string | null
           total_required?: number
           unit: string
           updated_at?: string
         }
         Update: {
+          category?: string | null
           deficit?: number
+          eta?: string | null
           id?: string
-          in_stock?: number
-          in_transit?: number
+          in_production?: number
+          installed?: number
           name?: string
+          on_site?: number
+          order_date?: string | null
+          ordered?: number
+          shipped?: number
           status?: string
+          supplier?: string | null
           total_required?: number
           unit?: string
           updated_at?: string
@@ -345,42 +442,51 @@ export type Database = {
       plan_fact: {
         Row: {
           created_at: string
+          crew_id: string | null
           date: string
           facade_id: string | null
           fact_value: number
           floor_id: string | null
           id: string
+          notes: string | null
+          photo_urls: string[] | null
           plan_value: number
           reported_by: string | null
           updated_at: string
           week_number: number
-          work_type_id: string
+          work_type_id: string | null
         }
         Insert: {
           created_at?: string
+          crew_id?: string | null
           date: string
           facade_id?: string | null
           fact_value?: number
           floor_id?: string | null
           id?: string
+          notes?: string | null
+          photo_urls?: string[] | null
           plan_value?: number
           reported_by?: string | null
           updated_at?: string
           week_number: number
-          work_type_id: string
+          work_type_id?: string | null
         }
         Update: {
           created_at?: string
+          crew_id?: string | null
           date?: string
           facade_id?: string | null
           fact_value?: number
           floor_id?: string | null
           id?: string
+          notes?: string | null
+          photo_urls?: string[] | null
           plan_value?: number
           reported_by?: string | null
           updated_at?: string
           week_number?: number
-          work_type_id?: string
+          work_type_id?: string | null
         }
         Relationships: [
           {
@@ -435,33 +541,45 @@ export type Database = {
       }
       shipments: {
         Row: {
+          batch_number: string | null
           created_at: string
+          defect_count: number | null
+          defect_notes: string | null
           eta: string | null
           id: string
           material_id: string
           notes: string | null
+          quality_status: string | null
           quantity: number
           received_at: string | null
           shipped_at: string | null
           status: string
         }
         Insert: {
+          batch_number?: string | null
           created_at?: string
+          defect_count?: number | null
+          defect_notes?: string | null
           eta?: string | null
           id?: string
           material_id: string
           notes?: string | null
+          quality_status?: string | null
           quantity: number
           received_at?: string | null
           shipped_at?: string | null
           status?: string
         }
         Update: {
+          batch_number?: string | null
           created_at?: string
+          defect_count?: number | null
+          defect_notes?: string | null
           eta?: string | null
           id?: string
           material_id?: string
           notes?: string | null
+          quality_status?: string | null
           quantity?: number
           received_at?: string | null
           shipped_at?: string | null
@@ -479,33 +597,45 @@ export type Database = {
       }
       sync_config: {
         Row: {
+          column_mapping: Json | null
           created_at: string
+          created_by: string | null
           direction: string
           id: string
           is_active: boolean
+          last_error: string | null
           last_synced_at: string | null
           sheet_id: string
           sheet_name: string
+          sync_interval_minutes: number | null
           target_table: string
         }
         Insert: {
+          column_mapping?: Json | null
           created_at?: string
+          created_by?: string | null
           direction?: string
           id?: string
           is_active?: boolean
+          last_error?: string | null
           last_synced_at?: string | null
           sheet_id: string
           sheet_name: string
+          sync_interval_minutes?: number | null
           target_table: string
         }
         Update: {
+          column_mapping?: Json | null
           created_at?: string
+          created_by?: string | null
           direction?: string
           id?: string
           is_active?: boolean
+          last_error?: string | null
           last_synced_at?: string | null
           sheet_id?: string
           sheet_name?: string
+          sync_interval_minutes?: number | null
           target_table?: string
         }
         Relationships: []
@@ -530,24 +660,59 @@ export type Database = {
       }
       work_types: {
         Row: {
+          created_at: string
+          duration_days: number | null
+          end_date: string | null
+          facade_id: string | null
           id: string
           name: string
-          sort_order: number
+          section: string
+          sort_number: number | null
+          start_date: string | null
+          subsection: string | null
           unit: string
+          volume: number | null
+          workers_count: number | null
         }
         Insert: {
+          created_at?: string
+          duration_days?: number | null
+          end_date?: string | null
+          facade_id?: string | null
           id?: string
           name: string
-          sort_order?: number
+          section: string
+          sort_number?: number | null
+          start_date?: string | null
+          subsection?: string | null
           unit: string
+          volume?: number | null
+          workers_count?: number | null
         }
         Update: {
+          created_at?: string
+          duration_days?: number | null
+          end_date?: string | null
+          facade_id?: string | null
           id?: string
           name?: string
-          sort_order?: number
+          section?: string
+          sort_number?: number | null
+          start_date?: string | null
+          subsection?: string | null
           unit?: string
+          volume?: number | null
+          workers_count?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "work_types_facade_id_fkey"
+            columns: ["facade_id"]
+            isOneToOne: false
+            referencedRelation: "facades"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
