@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import TelegramChats from "@/components/TelegramChats";
 
 interface TopBarProps {
   projectName?: string;
+  projectId?: string;
   onBackToProjects?: () => void;
 }
 
-const TopBar = ({ projectName, onBackToProjects }: TopBarProps) => {
+const TopBar = ({ projectName, projectId, onBackToProjects }: TopBarProps) => {
   const { displayName, signOut } = useAuth();
   const [time, setTime] = useState("");
 
@@ -43,6 +45,7 @@ const TopBar = ({ projectName, onBackToProjects }: TopBarProps) => {
         </span>
       </div>
       <div className="flex items-center gap-3">
+        {projectId && <TelegramChats projectId={projectId} />}
         <div className="flex items-center gap-1.5">
           <div className="w-[7px] h-[7px] rounded-full bg-primary shadow-[0_0_8px_hsl(163_100%_42%/0.25)] animate-pulse-dot" />
           <span className="font-mono text-[10px] text-muted-foreground">{time}</span>
