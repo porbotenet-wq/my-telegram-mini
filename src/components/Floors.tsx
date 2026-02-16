@@ -1,48 +1,71 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Loader2 } from "lucide-react";
 
-const floorStatus: Record<number, string[]> = {
-  2: ["dn", "dn", "dn", "dn"], 3: ["dn", "dn", "dn", "dn"],
-  4: ["dn", "dn", "ip", "dn"], 5: ["dn", "dn", "ip", "ip"],
-  6: ["ip", "dn", "ip", "ip"], 7: ["ip", "ns", "ns", "ns"],
-  8: ["ip", "ns", "bl", "ns"],
-};
-const floorPct: Record<number, number[]> = {
-  2: [100, 100, 85, 100], 3: [100, 100, 72, 90],
-  4: [95, 100, 45, 80], 5: [88, 100, 30, 55],
-  6: [60, 100, 20, 35], 7: [40, 0, 0, 0], 8: [25, 0, 0, 0],
-};
+interface FloorsProps {
+  projectId: string;
+}
 
 const cellStyle: Record<string, string> = {
-  dn: "bg-primary/12 text-primary border-primary/25",
-  ip: "bg-warning/12 text-warning border-warning/30 animate-pulse-cell",
-  ns: "bg-foreground/[0.02] text-t3 border-transparent",
-  bl: "bg-destructive/12 text-destructive border-transparent",
+  done: "bg-primary/12 text-primary border-primary/25",
+  in_progress: "bg-warning/12 text-warning border-warning/30",
+  pending: "bg-foreground/[0.02] text-t3 border-transparent",
+  blocked: "bg-destructive/12 text-destructive border-transparent",
 };
 
-const getFloorDetail = (f: number) => [
-  { n: "Бурение Ø12", u: "шт", p: 130, f: f <= 6 ? 130 : f === 7 ? 85 : 0 },
-  { n: "Бурение Ø16", u: "шт", p: 130, f: f <= 6 ? 130 : f === 7 ? 80 : 0 },
-  { n: "Кронштейны Н", u: "компл", p: 67, f: f <= 5 ? 67 : f === 6 ? 42 : 0 },
-  { n: "Кронштейны В", u: "компл", p: 4, f: f <= 5 ? 4 : 0 },
-  { n: "Геодезия", u: "точка", p: 1, f: f <= 5 ? 1 : 0 },
-  { n: "Сдача ТН (кр)", u: "этаж", p: 1, f: f <= 4 ? 1 : 0 },
-  { n: "Модули СПК", u: "шт", p: 52, f: f <= 4 ? 52 : f === 5 ? 38 : 0 },
-  { n: "Уплотнитель", u: "м.п.", p: 208, f: f <= 3 ? 208 : f === 4 ? 150 : 0 },
-  { n: "Герметизация", u: "м.п.", p: 72.8, f: f <= 3 ? 72.8 : f === 4 ? 40 : 0 },
-  { n: "Сдача ТН (эт)", u: "этаж", p: 1, f: f <= 3 ? 1 : 0 },
-];
+const Floors = ({ projectId }: FloorsProps) => {
+  const [facades, setFacades] = useState<any[]>([]);
+  const [floors, setFloors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedFloor, setSelectedFloor] = useState<number | null>(null);
 
-const Floors = () => {
-  const [selectedFloor, setSelectedFloor] = useState(5);
-  const detail = getFloorDetail(selectedFloor);
+  useEffect(() => {
+    const fetchData = async () => {
+      const { data: facData } = await supabase.from("facades").select("*").eq("project_id", projectId).order("name");
+      setFacades(facData || []);
+
+      if (facData && facData.length > 0) {
+        const facadeIds = facData.map(f => f.id);
+        const { data: flData } = await supabase.from("floors").select("*").in("facade_id", facadeIds).order("floor_number", { ascending: false });
+        setFloors(flData || []);
+      }
+      setLoading(false);
+    };
+    fetchData();
+  }, [projectId]);
+
+  if (loading) {
+    return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  }
+
+  if (facades.length === 0) {
+    return (
+      <div className="animate-fade-in p-2.5 text-center py-8">
+        <div className="text-2xl mb-2">🏗️</div>
+        <div className="text-[12px] text-t2 font-semibold">Нет фасадов</div>
+        <div className="text-[10px] text-t3 mt-1">Добавьте фасады и этажи для этого проекта</div>
+      </div>
+    );
+  }
+
+  // Build floor matrix
+  const floorNumbers = [...new Set(floors.map(f => f.floor_number))].sort((a, b) => b - a);
+  const selectedFloorNum = selectedFloor ?? (floorNumbers[0] || 1);
+
+  const getFloorForFacade = (floorNum: number, facadeId: string) => {
+    return floors.find(f => f.floor_number === floorNum && f.facade_id === facadeId);
+  };
+
+  const selectedFloorDetails = floors.filter(f => f.floor_number === selectedFloorNum);
 
   return (
     <div className="animate-fade-in p-2.5">
       <div className="bg-bg2 border border-border rounded-lg p-3.5 mb-2.5">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[11px] font-bold uppercase tracking-wide text-t3">Матрица по этажам</span>
-          <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-primary/12 text-primary">Все фасады</span>
+          <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-primary/12 text-primary">{facades.length} фасадов</span>
         </div>
+
         <div className="flex gap-2.5 mb-2.5 flex-wrap">
           {[
             { color: "bg-primary", label: "Готово" },
@@ -56,67 +79,76 @@ const Floors = () => {
             </div>
           ))}
         </div>
+
         {/* Header */}
-        <div className="grid grid-cols-[28px_repeat(4,1fr)] gap-0.5 text-[8px] font-mono font-semibold text-t3 mb-1">
+        <div className={`grid gap-0.5 text-[8px] font-mono font-semibold text-t3 mb-1`} style={{ gridTemplateColumns: `28px repeat(${facades.length}, 1fr)` }}>
           <div />
-          <div className="text-center">Ф1</div>
-          <div className="text-center">Ф2</div>
-          <div className="text-center">Ф3</div>
-          <div className="text-center">Ф4</div>
+          {facades.map(f => (
+            <div key={f.id} className="text-center">{f.code || f.name.slice(0, 3)}</div>
+          ))}
         </div>
+
         {/* Grid */}
-        {Array.from({ length: 17 }, (_, i) => 18 - i).map((floor) => {
-          const st = floorStatus[floor] || ["ns", "ns", "ns", "ns"];
-          const pc = floorPct[floor] || [0, 0, 0, 0];
-          return (
-            <div key={floor} className="grid grid-cols-[28px_repeat(4,1fr)] gap-0.5 mb-0.5">
-              <div className="font-mono font-semibold text-t3 text-[8px] flex items-center justify-center">{floor}</div>
-              {st.map((s, i) => (
+        {floorNumbers.map((floorNum) => (
+          <div key={floorNum} className="mb-0.5" style={{ display: "grid", gridTemplateColumns: `28px repeat(${facades.length}, 1fr)`, gap: "2px" }}>
+            <div className="font-mono font-semibold text-t3 text-[8px] flex items-center justify-center">{floorNum}</div>
+            {facades.map(facade => {
+              const fl = getFloorForFacade(floorNum, facade.id);
+              const status = fl?.status || "pending";
+              const pct = fl && fl.modules_plan > 0 ? Math.round((fl.modules_fact / fl.modules_plan) * 100) : 0;
+              const style = cellStyle[status] || cellStyle.pending;
+              return (
                 <button
-                  key={i}
-                  onClick={() => setSelectedFloor(floor)}
-                  className={`h-6 rounded-sm flex items-center justify-center font-mono text-[8px] font-semibold cursor-pointer transition-all duration-200 border hover:scale-105 ${cellStyle[s]}`}
+                  key={facade.id}
+                  onClick={() => setSelectedFloor(floorNum)}
+                  className={`h-6 rounded-sm flex items-center justify-center font-mono text-[8px] font-semibold cursor-pointer transition-all duration-200 border hover:scale-105 ${style}`}
                 >
-                  {pc[i] > 0 ? `${pc[i]}%` : "—"}
+                  {pct > 0 ? `${pct}%` : "—"}
                 </button>
-              ))}
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+        ))}
       </div>
 
       {/* Floor detail */}
       <div className="bg-bg2 border border-border rounded-lg p-3.5">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[11px] font-bold uppercase tracking-wide text-t3">Детализация этажа</span>
-          <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-warning/12 text-warning">Этаж {selectedFloor}</span>
+          <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-warning/12 text-warning">Этаж {selectedFloorNum}</span>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[10px]">
-            <thead>
-              <tr>
-                {["Работа", "Ед.", "План", "Факт", "%"].map((h) => (
-                  <th key={h} className="text-left text-[8px] font-bold uppercase tracking-wide text-t3 p-1.5 border-b border-border">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {detail.map((row) => {
-                const pct = row.p > 0 ? Math.round((row.f / row.p) * 100) : 0;
-                const c = pct >= 100 ? "text-primary" : pct > 0 ? "text-warning" : "text-t3";
-                return (
-                  <tr key={row.n} className="last:border-0">
-                    <td className="p-2 border-b border-border font-semibold text-t1">{row.n}</td>
-                    <td className="p-2 border-b border-border text-t2">{row.u}</td>
-                    <td className="p-2 border-b border-border font-mono text-center">{row.p}</td>
-                    <td className={`p-2 border-b border-border font-mono text-center font-semibold ${c}`}>{row.f}</td>
-                    <td className={`p-2 border-b border-border font-mono text-center font-bold ${c}`}>{pct}%</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        {selectedFloorDetails.length === 0 ? (
+          <div className="text-[10px] text-t3 text-center py-4">Нет данных для этажа {selectedFloorNum}</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[10px]">
+              <thead>
+                <tr>
+                  {["Фасад", "Модули П", "Модули Ф", "Кронш. П", "Кронш. Ф", "%"].map((h) => (
+                    <th key={h} className="text-left text-[8px] font-bold uppercase tracking-wide text-t3 p-1.5 border-b border-border">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {selectedFloorDetails.map((fl) => {
+                  const facade = facades.find(f => f.id === fl.facade_id);
+                  const pct = fl.modules_plan > 0 ? Math.round((fl.modules_fact / fl.modules_plan) * 100) : 0;
+                  const c = pct >= 100 ? "text-primary" : pct > 0 ? "text-warning" : "text-t3";
+                  return (
+                    <tr key={fl.id}>
+                      <td className="p-2 border-b border-border font-semibold text-t1">{facade?.name || "—"}</td>
+                      <td className="p-2 border-b border-border font-mono text-center">{fl.modules_plan}</td>
+                      <td className={`p-2 border-b border-border font-mono text-center font-semibold ${c}`}>{fl.modules_fact}</td>
+                      <td className="p-2 border-b border-border font-mono text-center">{fl.brackets_plan}</td>
+                      <td className={`p-2 border-b border-border font-mono text-center font-semibold ${c}`}>{fl.brackets_fact}</td>
+                      <td className={`p-2 border-b border-border font-mono text-center font-bold ${c}`}>{pct}%</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

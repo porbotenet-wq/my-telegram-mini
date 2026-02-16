@@ -1,26 +1,58 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Loader2 } from "lucide-react";
 
-const alerts = [
-  { tp: "ug", ic: "🔴", t: "Дефект модуля при приемке", x: "Скол на стеклопакете, партия #47, МР-2.1-1", tm: "14:22", ac: ["📸 Фото", "📞 Производство"] },
-  { tp: "ug", ic: "🔴", t: "Просрочка: план-факт отчёт", x: "Прораб Фасад 3 не сдал отчёт. Эскалация → РП.", tm: "13:15", ac: ["📞 Позвонить"] },
-  { tp: "wn", ic: "⚠️", t: "Отставание: монтаж модулей", x: "Фасад 3, 5 этаж. План: 48, факт: 32 (-33%)", tm: "12:40", ac: ["📊 Детали", "👷 Бригада"] },
-  { tp: "wn", ic: "⚠️", t: "Дефицит: Планка ПЛ1", x: "Остаток 187 из 1308. Заказать доп. партию.", tm: "11:30", ac: ["📦 Заказать"] },
-  { tp: "", ic: "🚛", t: "Отгрузка М-006", x: "24 модуля Тип 1. Машина А567ВК. ETA: 14:30", tm: "10:55", ac: ["✅ Принять", "📞 Водитель"] },
-  { tp: "", ic: "✅", t: "Сдача ТН: кронштейны, 5 эт", x: "Технадзор принял Фасад 1, 5 этаж.", tm: "10:20", ac: ["▶️ Начать модули"] },
-  { tp: "", ic: "📊", t: "Еженедельный отчёт Н9", x: "Модули: 145/168 (86%). Кронштейны: 192/218 (88%)", tm: "09:00", ac: ["📈 Полный отчёт"] },
-  { tp: "wn", ic: "⚠️", t: "Контроль качества", x: "Понедельник 10:00 — чек-лист Фасад 1", tm: "08:30", ac: ["📋 Чек-лист"] },
-];
+interface AlertsProps {
+  projectId: string;
+}
 
 type Filter = "all" | "ug" | "wn" | "info";
 
-const Alerts = () => {
+const priorityMap: Record<string, { border: string; tp: string }> = {
+  critical: { border: "border-l-destructive", tp: "ug" },
+  high: { border: "border-l-destructive", tp: "ug" },
+  normal: { border: "border-l-warning", tp: "wn" },
+  medium: { border: "border-l-warning", tp: "wn" },
+  low: { border: "border-l-primary", tp: "info" },
+  info: { border: "border-l-primary", tp: "info" },
+};
+
+const iconMap: Record<string, string> = {
+  critical: "🔴",
+  high: "🔴",
+  normal: "⚠️",
+  medium: "⚠️",
+  low: "ℹ️",
+  info: "ℹ️",
+};
+
+const Alerts = ({ projectId }: AlertsProps) => {
+  const [alerts, setAlerts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const { data } = await supabase
+        .from("alerts")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      setAlerts(data || []);
+      setLoading(false);
+    };
+    fetchData();
+  }, [projectId]);
+
+  if (loading) {
+    return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  }
 
   const filtered = alerts.filter((a) => {
     if (filter === "all") return true;
-    if (filter === "ug") return a.tp === "ug";
-    if (filter === "wn") return a.tp === "wn";
-    return a.tp === "";
+    const pm = priorityMap[a.priority] || priorityMap.normal;
+    return pm.tp === filter;
   });
 
   const filterBtns: { id: Filter; label: string }[] = [
@@ -30,10 +62,20 @@ const Alerts = () => {
     { id: "info", label: "ℹ️ Инфо" },
   ];
 
+  if (alerts.length === 0) {
+    return (
+      <div className="animate-fade-in p-2.5 text-center py-8">
+        <div className="text-2xl mb-2">🔔</div>
+        <div className="text-[12px] text-t2 font-semibold">Нет уведомлений</div>
+        <div className="text-[10px] text-t3 mt-1">Алерты появятся при событиях на проекте</div>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-fade-in p-2.5">
       <div className="text-[10px] font-bold uppercase tracking-wider text-t3 my-3.5 flex items-center gap-2">
-        Уведомления <span className="flex-1 h-px bg-border" />
+        Уведомления ({alerts.length}) <span className="flex-1 h-px bg-border" />
       </div>
 
       <div className="flex gap-1 mb-2.5 flex-wrap">
@@ -42,9 +84,7 @@ const Alerts = () => {
             key={f.id}
             onClick={() => setFilter(f.id)}
             className={`px-2 py-1 rounded-sm font-sans text-[10px] font-bold transition-all ${
-              filter === f.id
-                ? "bg-primary text-primary-foreground"
-                : "bg-bg1 text-t1 border border-border hover:bg-bg2"
+              filter === f.id ? "bg-primary text-primary-foreground" : "bg-bg1 text-t1 border border-border hover:bg-bg2"
             }`}
           >
             {f.label}
@@ -52,52 +92,25 @@ const Alerts = () => {
         ))}
       </div>
 
-      {filtered.map((a, i) => (
-        <div
-          key={i}
-          className={`flex gap-2 p-2.5 bg-bg1 rounded-sm mb-1.5 border-l-[3px] ${
-            a.tp === "ug" ? "border-l-destructive" : a.tp === "wn" ? "border-l-warning" : "border-l-primary"
-          }`}
-        >
-          <span className="text-base">{a.ic}</span>
-          <div className="flex-1">
-            <div className="text-[11px] font-semibold mb-0.5">{a.t}</div>
-            <div className="text-[10px] text-t2 leading-snug">{a.x}</div>
-            <div className="flex gap-1 mt-1 flex-wrap">
-              {a.ac.map((btn) => (
-                <button key={btn} className="px-1.5 py-0.5 rounded-sm bg-bg1 text-t1 border border-border font-sans text-[9px] font-bold hover:bg-bg2 transition-all">
-                  {btn}
-                </button>
-              ))}
+      {filtered.map((a) => {
+        const pm = priorityMap[a.priority] || priorityMap.normal;
+        const icon = iconMap[a.priority] || "ℹ️";
+        return (
+          <div key={a.id} className={`flex gap-2 p-2.5 bg-bg1 rounded-sm mb-1.5 border-l-[3px] ${pm.border}`}>
+            <span className="text-base">{icon}</span>
+            <div className="flex-1">
+              <div className="text-[11px] font-semibold mb-0.5">{a.title}</div>
+              {a.description && <div className="text-[10px] text-t2 leading-snug">{a.description}</div>}
+              <div className="font-mono text-[9px] text-t3 mt-0.5">
+                {new Date(a.created_at).toLocaleString("ru-RU", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}
+              </div>
             </div>
-            <div className="font-mono text-[9px] text-t3 mt-0.5">{a.tm}</div>
+            {a.is_resolved && (
+              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-primary/12 text-primary self-start">✅</span>
+            )}
           </div>
-        </div>
-      ))}
-
-      {/* Escalation */}
-      <div className="text-[10px] font-bold uppercase tracking-wider text-t3 my-3.5 flex items-center gap-2">
-        Эскалации <span className="flex-1 h-px bg-border" />
-      </div>
-      <div className="bg-bg2 border border-border rounded-lg p-3.5">
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <div>
-            <div className="text-[8px] text-t3 mb-0.5">УРОВЕНЬ 1</div>
-            <div className="text-[10px] font-semibold text-primary">Исполнитель</div>
-            <div className="font-mono text-[9px] text-t3">0-4 ч</div>
-          </div>
-          <div>
-            <div className="text-[8px] text-t3 mb-0.5">УРОВЕНЬ 2</div>
-            <div className="text-[10px] font-semibold text-warning">Рук. проекта</div>
-            <div className="font-mono text-[9px] text-t3">4-24 ч</div>
-          </div>
-          <div>
-            <div className="text-[8px] text-t3 mb-0.5">УРОВЕНЬ 3</div>
-            <div className="text-[10px] font-semibold text-destructive">Директор</div>
-            <div className="font-mono text-[9px] text-t3">&gt; 24 ч</div>
-          </div>
-        </div>
-      </div>
+        );
+      })}
     </div>
   );
 };
