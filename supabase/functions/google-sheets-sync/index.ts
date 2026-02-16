@@ -11,11 +11,28 @@ interface SheetRange {
   values: string[][];
 }
 
+function isServiceAccountJson(val: string): boolean {
+  try {
+    const parsed = JSON.parse(val);
+    return !!parsed.client_email && !!parsed.private_key;
+  } catch {
+    return false;
+  }
+}
+
 async function getAccessToken(serviceAccountKey: string): Promise<string> {
   const key = JSON.parse(serviceAccountKey);
+  if (!key.client_email || !key.private_key) {
+    throw new Error("Invalid service account JSON: missing client_email or private_key");
+  }
   const now = Math.floor(Date.now() / 1000);
-  const header = btoa(JSON.stringify({ alg: "RS256", typ: "JWT" }));
-  const claim = btoa(
+
+  // Base64url encode
+  const b64url = (str: string) =>
+    btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+  const header = b64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const claim = b64url(
     JSON.stringify({
       iss: key.client_email,
       scope: "https://www.googleapis.com/auth/spreadsheets",
@@ -25,7 +42,6 @@ async function getAccessToken(serviceAccountKey: string): Promise<string> {
     })
   );
 
-  // Import the private key
   const pemContent = key.private_key
     .replace("-----BEGIN PRIVATE KEY-----", "")
     .replace("-----END PRIVATE KEY-----", "")
@@ -43,11 +59,7 @@ async function getAccessToken(serviceAccountKey: string): Promise<string> {
 
   const toSign = new TextEncoder().encode(`${header}.${claim}`);
   const signature = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", cryptoKey, toSign);
-
-  const base64Sig = btoa(String.fromCharCode(...new Uint8Array(signature)))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+  const base64Sig = b64url(String.fromCharCode(...new Uint8Array(signature)));
 
   const jwt = `${header}.${claim}.${base64Sig}`;
 
@@ -64,6 +76,18 @@ async function getAccessToken(serviceAccountKey: string): Promise<string> {
 
   const tokenData = await tokenRes.json();
   return tokenData.access_token;
+}
+
+// For API Key mode (read-only public sheets)
+async function readSheetWithApiKey(apiKey: string, sheetId: string, range: string): Promise<string[][]> {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?key=${apiKey}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Failed to read sheet with API key: ${err}`);
+  }
+  const data: SheetRange = await res.json();
+  return data.values || [];
 }
 
 async function readSheet(accessToken: string, sheetId: string, range: string): Promise<string[][]> {
@@ -166,11 +190,6 @@ serve(async (req) => {
   }
 
   try {
-    const serviceAccountKey = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_KEY");
-    if (!serviceAccountKey) {
-      throw new Error("GOOGLE_SERVICE_ACCOUNT_KEY is not configured");
-    }
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseUrl || !supabaseServiceKey) {
@@ -178,10 +197,34 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const accessToken = await getAccessToken(serviceAccountKey);
-
     const body = await req.json();
     const { action, sheet_id, sheet_name, target_table, range, direction, project_id } = body;
+
+    // list_configs doesn't need Google auth
+    if (action === "list_configs") {
+      const { data, error } = await supabase.from("sync_config").select("*").eq("is_active", true);
+      if (error) throw new Error(`Failed to list configs: ${error.message}`);
+      return new Response(JSON.stringify({ success: true, configs: data }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const serviceAccountKey = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_KEY");
+    if (!serviceAccountKey) {
+      throw new Error("GOOGLE_SERVICE_ACCOUNT_KEY is not configured. Please add the full JSON key of a Google Service Account.");
+    }
+
+    const useServiceAccount = isServiceAccountJson(serviceAccountKey);
+    let accessToken = "";
+    
+    if (useServiceAccount) {
+      accessToken = await getAccessToken(serviceAccountKey);
+    } else {
+      // Treat as API Key — only read from public sheets
+      if (action !== "pull") {
+        throw new Error("API Key mode only supports 'pull' from public sheets. For push/sync, provide a Service Account JSON key.");
+      }
+    }
 
     if (action === "pull") {
       // Pull data from Google Sheets → Supabase
@@ -189,7 +232,9 @@ serve(async (req) => {
       if (!handler) throw new Error(`Unsupported table: ${target_table}`);
 
       const sheetRange = range || `${sheet_name}!A2:Z1000`;
-      const rows = await readSheet(accessToken, sheet_id, sheetRange);
+      const rows = useServiceAccount
+        ? await readSheet(accessToken, sheet_id, sheetRange)
+        : await readSheetWithApiKey(serviceAccountKey, sheet_id, sheetRange);
 
       if (rows.length === 0) {
         return new Response(JSON.stringify({ success: true, message: "No data to pull", rows_processed: 0 }), {
@@ -276,13 +321,8 @@ serve(async (req) => {
       });
     }
 
-    if (action === "list_configs") {
-      const { data, error } = await supabase.from("sync_config").select("*").eq("is_active", true);
-      if (error) throw new Error(`Failed to list configs: ${error.message}`);
-      return new Response(JSON.stringify({ success: true, configs: data }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+
+
 
     throw new Error(`Unknown action: ${action}`);
   } catch (error: unknown) {
