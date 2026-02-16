@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import PhotoUpload from "@/components/PhotoUpload";
 
 interface FloorsProps {
   projectId: string;
@@ -147,6 +148,32 @@ const Floors = ({ projectId }: FloorsProps) => {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Floor photos */}
+        {selectedFloorDetails.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-border">
+            <span className="text-[10px] font-bold uppercase tracking-wide text-t3">Фото этажа {selectedFloorNum}</span>
+            <div className="mt-2">
+              {selectedFloorDetails.map((fl) => {
+                const facade = facades.find(f => f.id === fl.facade_id);
+                return (
+                  <div key={fl.id} className="mb-2">
+                    <div className="text-[9px] text-t2 mb-1">{facade?.name || "Фасад"}</div>
+                    <PhotoUpload
+                      photos={(fl as any).photo_urls || []}
+                      onPhotosChange={async (urls) => {
+                        await supabase.from("floors").update({ photo_urls: urls }).eq("id", fl.id);
+                        setFloors(prev => prev.map(f => f.id === fl.id ? { ...f, photo_urls: urls } : f));
+                      }}
+                      folder={`floors/${fl.id}`}
+                      maxPhotos={5}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

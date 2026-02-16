@@ -60,6 +60,7 @@ export type Database = {
           id: string
           is_read: boolean
           is_resolved: boolean
+          photo_urls: string[] | null
           priority: string
           project_id: string | null
           resolved_at: string | null
@@ -79,6 +80,7 @@ export type Database = {
           id?: string
           is_read?: boolean
           is_resolved?: boolean
+          photo_urls?: string[] | null
           priority?: string
           project_id?: string | null
           resolved_at?: string | null
@@ -98,6 +100,7 @@ export type Database = {
           id?: string
           is_read?: boolean
           is_resolved?: boolean
+          photo_urls?: string[] | null
           priority?: string
           project_id?: string | null
           resolved_at?: string | null
@@ -385,6 +388,7 @@ export type Database = {
           module_width: number | null
           modules_fact: number
           modules_plan: number
+          photo_urls: string[] | null
           sealant_fact: number
           sealant_plan: number
           status: string
@@ -402,6 +406,7 @@ export type Database = {
           module_width?: number | null
           modules_fact?: number
           modules_plan?: number
+          photo_urls?: string[] | null
           sealant_fact?: number
           sealant_plan?: number
           status?: string
@@ -419,6 +424,7 @@ export type Database = {
           module_width?: number | null
           modules_fact?: number
           modules_plan?: number
+          photo_urls?: string[] | null
           sealant_fact?: number
           sealant_plan?: number
           status?: string
