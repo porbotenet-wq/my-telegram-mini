@@ -188,6 +188,54 @@ export type Database = {
           },
         ]
       }
+      document_folders: {
+        Row: {
+          created_at: string
+          department: string
+          description: string | null
+          id: string
+          name: string
+          parent_id: string | null
+          project_id: string | null
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string
+          department: string
+          description?: string | null
+          id?: string
+          name: string
+          parent_id?: string | null
+          project_id?: string | null
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string
+          department?: string
+          description?: string | null
+          id?: string
+          name?: string
+          parent_id?: string | null
+          project_id?: string | null
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "document_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_folders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           ai_summary: string | null
@@ -196,6 +244,7 @@ export type Database = {
           file_size: number | null
           file_type: string
           file_url: string
+          folder_id: string | null
           id: string
           name: string
           parsed_text: string | null
@@ -209,6 +258,7 @@ export type Database = {
           file_size?: number | null
           file_type?: string
           file_url: string
+          folder_id?: string | null
           id?: string
           name: string
           parsed_text?: string | null
@@ -222,6 +272,7 @@ export type Database = {
           file_size?: number | null
           file_type?: string
           file_url?: string
+          folder_id?: string | null
           id?: string
           name?: string
           parsed_text?: string | null
@@ -229,6 +280,13 @@ export type Database = {
           uploaded_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "documents_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "document_folders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "documents_project_id_fkey"
             columns: ["project_id"]
@@ -907,6 +965,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      seed_project_folders: {
+        Args: { p_project_id: string }
+        Returns: undefined
       }
     }
     Enums: {

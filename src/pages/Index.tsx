@@ -78,7 +78,7 @@ const Index = () => {
       case "gpr": return <GPR projectId={pid} />;
       case "alerts": return <Alerts projectId={pid} />;
       case "sheets": return <SheetsSync />;
-      case "docs": return <Documents />;
+      case "docs": return <Documents projectId={pid} />;
       default: return <Dashboard projectId={pid} />;
     }
   };
