@@ -8,6 +8,7 @@ import Crew from "@/components/Crew";
 import Supply from "@/components/Supply";
 import GPR from "@/components/GPR";
 import Alerts from "@/components/Alerts";
+import LoginScreen from "@/components/LoginScreen";
 
 const tabComponents: Record<string, React.FC> = {
   dash: Dashboard,
@@ -21,7 +22,20 @@ const tabComponents: Record<string, React.FC> = {
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dash");
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [role, setRole] = useState("");
   const ActiveComponent = tabComponents[activeTab] || Dashboard;
+
+  if (!loggedIn) {
+    return (
+      <LoginScreen
+        onLogin={(r) => {
+          setRole(r);
+          setLoggedIn(true);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background relative">
