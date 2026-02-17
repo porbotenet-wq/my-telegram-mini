@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import TopBar from "@/components/TopBar";
 import TabBar from "@/components/TabBar";
@@ -17,15 +17,46 @@ import SheetsSync from "@/components/SheetsSync";
 import Documents from "@/components/Documents";
 import Workflow from "@/components/Workflow";
 import AIAssistant from "@/components/AIAssistant";
+import { OnboardingFlow } from "@/components/OnboardingFlow";
+import { supabase } from "@/integrations/supabase/client";
+import type { AppRole } from "@/data/jobInstructions";
 
 type Screen = "projects" | "create" | "project";
 
+// Map DB roles to jobInstructions AppRole
+const ROLE_MAP: Record<string, AppRole> = {
+  director: "director",
+  pm: "pm",
+  foreman1: "foreman",
+  foreman2: "foreman",
+  foreman3: "foreman",
+  production: "foreman",
+  pto: "pto",
+  supply: "supply",
+  project: "pm",
+  inspector: "inspector",
+};
+
 const Index = () => {
-  const { user, loading, roles } = useAuth();
+  const { user, loading, roles, displayName } = useAuth();
   const [activeTab, setActiveTab] = useState("dash");
   const [screen, setScreen] = useState<Screen>("projects");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("Проект");
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
+
+  // Check onboarding status
+  useEffect(() => {
+    if (!user) { setOnboardingCompleted(null); return; }
+    supabase
+      .from("profiles")
+      .select("onboarding_completed")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => {
+        setOnboardingCompleted(data?.onboarding_completed ?? false);
+      });
+  }, [user]);
 
   if (loading) {
     return (
@@ -37,6 +68,27 @@ const Index = () => {
 
   if (!user) {
     return <AuthScreen />;
+  }
+
+  // Show onboarding if not completed and user has a role
+  if (onboardingCompleted === false && roles.length > 0) {
+    const appRole = ROLE_MAP[roles[0]] || "pm";
+    return (
+      <OnboardingFlow
+        role={appRole}
+        userName={displayName || "Коллега"}
+        onComplete={() => setOnboardingCompleted(true)}
+      />
+    );
+  }
+
+  // Still loading onboarding status
+  if (onboardingCompleted === null) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-muted-foreground text-sm animate-pulse">Загрузка...</div>
+      </div>
+    );
   }
 
   if (screen === "projects") {

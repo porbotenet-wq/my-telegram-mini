@@ -579,6 +579,45 @@ export type Database = {
           },
         ]
       }
+      onboarding_attempts: {
+        Row: {
+          answers: Json | null
+          attempt_number: number
+          created_at: string
+          id: string
+          passed: boolean
+          read_seconds: number | null
+          role: string
+          score: number
+          total: number
+          user_id: string
+        }
+        Insert: {
+          answers?: Json | null
+          attempt_number?: number
+          created_at?: string
+          id?: string
+          passed: boolean
+          read_seconds?: number | null
+          role: string
+          score: number
+          total?: number
+          user_id: string
+        }
+        Update: {
+          answers?: Json | null
+          attempt_number?: number
+          created_at?: string
+          id?: string
+          passed?: boolean
+          read_seconds?: number | null
+          role?: string
+          score?: number
+          total?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       plan_fact: {
         Row: {
           created_at: string
@@ -667,6 +706,9 @@ export type Database = {
           created_at: string
           display_name: string
           id: string
+          onboarding_attempts_count: number
+          onboarding_completed: boolean
+          onboarding_completed_at: string | null
           pin_hash: string | null
           updated_at: string
           user_id: string
@@ -675,6 +717,9 @@ export type Database = {
           created_at?: string
           display_name: string
           id?: string
+          onboarding_attempts_count?: number
+          onboarding_completed?: boolean
+          onboarding_completed_at?: string | null
           pin_hash?: string | null
           updated_at?: string
           user_id: string
@@ -683,6 +728,9 @@ export type Database = {
           created_at?: string
           display_name?: string
           id?: string
+          onboarding_attempts_count?: number
+          onboarding_completed?: boolean
+          onboarding_completed_at?: string | null
           pin_hash?: string | null
           updated_at?: string
           user_id?: string
@@ -1007,7 +1055,19 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      onboarding_analytics: {
+        Row: {
+          avg_read_seconds: number | null
+          best_score: number | null
+          display_name: string | null
+          onboarding_attempts_count: number | null
+          onboarding_completed: boolean | null
+          onboarding_completed_at: string | null
+          role: Database["public"]["Enums"]["app_role"] | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
@@ -1016,6 +1076,17 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      record_onboarding_attempt: {
+        Args: {
+          p_answers: Json
+          p_passed: boolean
+          p_read_seconds: number
+          p_role: string
+          p_score: number
+          p_total: number
+        }
+        Returns: Json
       }
       seed_project_folders: {
         Args: { p_project_id: string }

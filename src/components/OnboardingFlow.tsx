@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, XCircle, BookOpen, HelpCircle, Trophy, RefreshCw } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface OnboardingFlowProps {
   role: AppRole;
@@ -68,6 +69,21 @@ export function OnboardingFlow({ role, userName, onComplete }: OnboardingFlowPro
       setCurrentQ((q) => q + 1);
       setSelectedOption(null);
     } else {
+      // Record attempt in DB
+      const result = isQuizPassed(questions, newAnswers);
+      const answersJson = questions.map((q, i) => ({
+        questionId: q.id,
+        selectedIndex: newAnswers[i],
+        correct: newAnswers[i] === q.correctIndex,
+      }));
+      supabase.rpc('record_onboarding_attempt', {
+        p_role: role,
+        p_score: result.score,
+        p_total: result.total,
+        p_passed: result.passed,
+        p_answers: answersJson,
+        p_read_seconds: readSeconds,
+      }).then(() => {});
       setStep('result');
     }
   };
