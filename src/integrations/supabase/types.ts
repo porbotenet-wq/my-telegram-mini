@@ -710,6 +710,7 @@ export type Database = {
           onboarding_completed: boolean
           onboarding_completed_at: string | null
           pin_hash: string | null
+          telegram_chat_id: string | null
           updated_at: string
           user_id: string
         }
@@ -721,6 +722,7 @@ export type Database = {
           onboarding_completed?: boolean
           onboarding_completed_at?: string | null
           pin_hash?: string | null
+          telegram_chat_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -732,6 +734,7 @@ export type Database = {
           onboarding_completed?: boolean
           onboarding_completed_at?: string | null
           pin_hash?: string | null
+          telegram_chat_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -968,6 +971,44 @@ export type Database = {
           target_table?: string
         }
         Relationships: []
+      }
+      telegram_notification_log: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          message_preview: string | null
+          project_id: string | null
+          success: boolean
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          message_preview?: string | null
+          project_id?: string | null
+          success?: boolean
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          message_preview?: string | null
+          project_id?: string | null
+          success?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_notification_log_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
