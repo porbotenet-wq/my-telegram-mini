@@ -1,7 +1,10 @@
+import { getAllowedTabs } from "@/data/roleConfig";
+
 interface TabBarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   showProjectCard?: boolean;
+  userRoles?: string[];
 }
 
 const tabs = [
@@ -12,13 +15,20 @@ const tabs = [
   { id: "crew", label: "👷 Бригады" },
   { id: "sup", label: "📦 Снабжение" },
   { id: "gpr", label: "📆 ГПР" },
+  { id: "wflow", label: "🔄 Процессы" },
   { id: "alerts", label: "🔔 Алерты" },
   { id: "sheets", label: "📊 Sheets" },
   { id: "docs", label: "📄 Документы" },
 ];
 
-const TabBar = ({ activeTab, onTabChange, showProjectCard }: TabBarProps) => {
-  const visibleTabs = showProjectCard ? tabs : tabs.filter((t) => t.id !== "card");
+const TabBar = ({ activeTab, onTabChange, showProjectCard, userRoles }: TabBarProps) => {
+  const allowedTabs = getAllowedTabs(userRoles || []);
+
+  const visibleTabs = tabs.filter((t) => {
+    if (t.id === "card" && !showProjectCard) return false;
+    if (allowedTabs && !allowedTabs.includes(t.id)) return false;
+    return true;
+  });
 
   return (
     <div className="flex gap-0.5 px-2.5 py-1.5 bg-bg1 overflow-x-auto scrollbar-none">

@@ -17,25 +17,31 @@ export type Database = {
       ai_chat_messages: {
         Row: {
           content: string
+          conversation_id: string | null
           created_at: string
           document_id: string | null
           id: string
+          project_id: string | null
           role: string
           user_id: string
         }
         Insert: {
           content: string
+          conversation_id?: string | null
           created_at?: string
           document_id?: string | null
           id?: string
+          project_id?: string | null
           role: string
           user_id: string
         }
         Update: {
           content?: string
+          conversation_id?: string | null
           created_at?: string
           document_id?: string | null
           id?: string
+          project_id?: string | null
           role?: string
           user_id?: string
         }
@@ -45,6 +51,13 @@ export type Database = {
             columns: ["document_id"]
             isOneToOne: false
             referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_chat_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]

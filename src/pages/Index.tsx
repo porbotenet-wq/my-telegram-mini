@@ -15,11 +15,13 @@ import ProjectCard from "@/components/ProjectCard";
 import CreateProjectWizard from "@/components/CreateProjectWizard";
 import SheetsSync from "@/components/SheetsSync";
 import Documents from "@/components/Documents";
+import Workflow from "@/components/Workflow";
+import AIAssistant from "@/components/AIAssistant";
 
 type Screen = "projects" | "create" | "project";
 
 const Index = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, roles } = useAuth();
   const [activeTab, setActiveTab] = useState("dash");
   const [screen, setScreen] = useState<Screen>("projects");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -77,6 +79,7 @@ const Index = () => {
       case "sup": return <Supply projectId={pid} />;
       case "gpr": return <GPR projectId={pid} />;
       case "alerts": return <Alerts projectId={pid} />;
+      case "wflow": return <Workflow />;
       case "sheets": return <SheetsSync />;
       case "docs": return <Documents projectId={pid} />;
       default: return <Dashboard projectId={pid} />;
@@ -90,8 +93,9 @@ const Index = () => {
         projectId={pid}
         onBackToProjects={() => setScreen("projects")}
       />
-      <TabBar activeTab={activeTab} onTabChange={setActiveTab} showProjectCard />
+      <TabBar activeTab={activeTab} onTabChange={setActiveTab} showProjectCard userRoles={roles} />
       {renderTab()}
+      <AIAssistant projectId={pid} projectName={projectName} userRole={roles[0]} />
       <div className="h-[70px]" />
     </div>
   );
