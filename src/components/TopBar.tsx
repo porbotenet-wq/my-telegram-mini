@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import TelegramChats from "@/components/TelegramChats";
+import ProfileSettings from "@/components/ProfileSettings";
 
 interface TopBarProps {
   projectName?: string;
@@ -11,6 +12,7 @@ interface TopBarProps {
 const TopBar = ({ projectName, projectId, onBackToProjects }: TopBarProps) => {
   const { displayName, signOut } = useAuth();
   const [time, setTime] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     const update = () => {
@@ -51,9 +53,13 @@ const TopBar = ({ projectName, projectId, onBackToProjects }: TopBarProps) => {
           <span className="font-mono text-[10px] text-muted-foreground">{time}</span>
         </div>
         {displayName && (
-          <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="text-[10px] text-muted-foreground truncate max-w-[80px] hover:text-primary transition-colors cursor-pointer"
+            title="Настройки профиля"
+          >
             {displayName}
-          </span>
+          </button>
         )}
         <button
           onClick={signOut}
@@ -63,6 +69,7 @@ const TopBar = ({ projectName, projectId, onBackToProjects }: TopBarProps) => {
           ⏻
         </button>
       </div>
+      <ProfileSettings open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 };
