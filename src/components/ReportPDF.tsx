@@ -47,12 +47,12 @@ const ReportPDF = ({ projectId, projectName }: ReportPDFProps) => {
         supabase.from("facades").select("*").eq("project_id", projectId),
       ]);
       setData({
-        project: projRes.data,
-        planFact: pfRes.data || [],
-        materials: matRes.data || [],
-        alerts: alertsRes.data || [],
-        crews: crewsRes.data || [],
-        facades: facRes.data || [],
+        project: projRes.data as unknown as Project,
+        planFact: (pfRes.data || []) as unknown as PlanFactRecord[],
+        materials: (matRes.data || []) as unknown as Material[],
+        alerts: (alertsRes.data || []) as unknown as Alert[],
+        crews: (crewsRes.data || []) as unknown as Crew[],
+        facades: (facRes.data || []) as unknown as Facade[],
       });
     } catch (e) {
       console.error("Report fetch error:", e);

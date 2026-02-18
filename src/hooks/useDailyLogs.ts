@@ -23,8 +23,7 @@ export function useDailyLogs(projectId: string, filters?: { status?: string; dat
   return useQuery({
     queryKey: ["daily-logs", projectId, filters],
     queryFn: async (): Promise<DailyLog[]> => {
-      let query = supabase
-        .from("daily_logs")
+      let query = (supabase.from("daily_logs" as any) as any)
         .select("*")
         .eq("project_id", projectId)
         .order("date", { ascending: false })
@@ -45,8 +44,7 @@ export function useCreateDailyLog() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (log: Partial<DailyLog> & { project_id: string; works_description: string }) => {
-      const { data, error } = await supabase
-        .from("daily_logs")
+      const { data, error } = await (supabase.from("daily_logs" as any) as any)
         .insert({
           ...log,
           status: "draft",
@@ -67,8 +65,7 @@ export function useSubmitDailyLog() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, projectId }: { id: string; projectId: string }) => {
-      const { error } = await supabase
-        .from("daily_logs")
+      const { error } = await (supabase.from("daily_logs" as any) as any)
         .update({ status: "submitted", updated_at: new Date().toISOString() })
         .eq("id", id);
       if (error) throw error;
@@ -95,8 +92,7 @@ export function useReviewDailyLog() {
       comment?: string;
     }) => {
       const { data: session } = await supabase.auth.getSession();
-      const { error } = await supabase
-        .from("daily_logs")
+      const { error } = await (supabase.from("daily_logs" as any) as any)
         .update({
           status: decision,
           reviewed_by: session?.session?.user?.id || null,
