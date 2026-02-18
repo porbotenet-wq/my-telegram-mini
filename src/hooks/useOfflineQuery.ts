@@ -48,7 +48,7 @@ export function useOfflineQuery<T>({ queryKey, queryFn, enabled = true, staleTim
             await setItem(queryKey, result);
           }
         } catch (e: unknown) {
-          if (!cancelled) setError(e.message || "Ошибка загрузки");
+          if (!cancelled) setError(e instanceof Error ? e.message : "Ошибка загрузки");
         }
       }
 

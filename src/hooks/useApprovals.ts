@@ -21,8 +21,7 @@ export function useApprovals(projectId: string, filters?: { status?: string }) {
   return useQuery({
     queryKey: ["approvals", projectId, filters],
     queryFn: async (): Promise<Approval[]> => {
-      let query = supabase
-        .from("approvals")
+      let query = (supabase.from("approvals" as any) as any)
         .select("*")
         .eq("project_id", projectId)
         .order("created_at", { ascending: false })
@@ -46,8 +45,7 @@ export function useMyApprovals(status?: string) {
       const userId = session?.session?.user?.id;
       if (!userId) return [];
 
-      let query = supabase
-        .from("approvals")
+      let query = (supabase.from("approvals" as any) as any)
         .select("*")
         .eq("assigned_to", userId)
         .order("created_at", { ascending: false })
@@ -69,8 +67,7 @@ export function useCreateApproval() {
       approval: Partial<Approval> & { project_id: string; title: string; type: Approval["type"] }
     ) => {
       const { data: session } = await supabase.auth.getSession();
-      const { data, error } = await supabase
-        .from("approvals")
+      const { data, error } = await (supabase.from("approvals" as any) as any)
         .insert({
           ...approval,
           requested_by: session?.session?.user?.id || null,
@@ -101,8 +98,7 @@ export function useDecideApproval() {
       decision: "approved" | "rejected";
       comment?: string;
     }) => {
-      const { error } = await supabase
-        .from("approvals")
+      const { error } = await (supabase.from("approvals" as any) as any)
         .update({
           status: decision,
           decision_comment: comment || null,
