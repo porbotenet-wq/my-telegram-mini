@@ -16,8 +16,9 @@ Deno.serve(async (req) => {
   try {
     const { action } = await req.json();
 
-    if (action === "set_webhook") {
-      const webhookUrl = `${SUPABASE_URL}/functions/v1/telegram-bot-webhook`;
+    if (action === "set_webhook" || action === "set_webhook_to_bot") {
+      const target = action === "set_webhook_to_bot" ? "telegram-bot" : "telegram-bot-webhook";
+      const webhookUrl = `${SUPABASE_URL}/functions/v1/${target}`;
       const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/setWebhook`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
