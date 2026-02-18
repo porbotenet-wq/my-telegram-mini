@@ -61,7 +61,7 @@ const DailyLogs = ({ projectId, userRole }: DailyLogsProps) => {
       toast.success("Отчёт создан");
       setForm({ zone_name: "", works_description: "", volume: "", workers_count: "", issues_description: "", weather: "", photo_urls: [] });
       setTab("list");
-    } catch (e: any) {
+    } catch (e: unknown) {
       toast.error(e.message || "Ошибка создания");
     }
   };
@@ -70,7 +70,7 @@ const DailyLogs = ({ projectId, userRole }: DailyLogsProps) => {
     try {
       await submitLog.mutateAsync({ id: logId, projectId });
       toast.success("Отчёт отправлен на проверку");
-    } catch (e: any) {
+    } catch (e: unknown) {
       toast.error(e.message);
     }
   };
@@ -79,7 +79,7 @@ const DailyLogs = ({ projectId, userRole }: DailyLogsProps) => {
     try {
       await reviewLog.mutateAsync({ id: logId, projectId, decision, comment });
       toast.success(decision === "approved" ? "Отчёт утверждён" : "Отчёт отклонён");
-    } catch (e: any) {
+    } catch (e: unknown) {
       toast.error(e.message);
     }
   };

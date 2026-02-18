@@ -38,7 +38,7 @@ const Approvals = ({ projectId, userRole }: ApprovalsProps) => {
       toast.success(decision === "approved" ? "Согласовано" : "Отклонено");
       setCommentingId(null);
       setComment("");
-    } catch (e: any) {
+    } catch (e: unknown) {
       toast.error(e.message);
     }
   };

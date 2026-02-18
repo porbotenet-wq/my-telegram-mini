@@ -6,18 +6,20 @@ import {
 } from "recharts";
 import { FileDown, Loader2, RefreshCw, TrendingUp, TrendingDown, Minus } from "lucide-react";
 
+import type { Project, PlanFactRecord, Material, Alert, Crew, Facade } from "@/types/database";
+
 interface ReportPDFProps {
   projectId: string;
   projectName: string;
 }
 
 interface ProjectData {
-  project: any;
-  planFact: any[];
-  materials: any[];
-  alerts: any[];
-  crews: any[];
-  facades: any[];
+  project: Project;
+  planFact: PlanFactRecord[];
+  materials: Material[];
+  alerts: Alert[];
+  crews: Crew[];
+  facades: Facade[];
 }
 
 const CHART_COLORS = {
@@ -257,7 +259,7 @@ const ReportPDF = ({ projectId, projectName }: ReportPDFProps) => {
           <div className="bg-muted border border-border rounded-xl p-3">
             <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-2.5">⚠️ Открытые алерты ({stats.openAlerts.length})</div>
             <div className="space-y-1.5">
-              {stats.openAlerts.slice(0, 8).map((alert: any) => {
+              {stats.openAlerts.slice(0, 8).map((alert: Alert) => {
                 const styles: Record<string, string> = {
                   critical: "text-destructive bg-destructive/10 border-destructive/30",
                   high: "text-yellow-500 bg-yellow-500/10 border-yellow-500/30",
@@ -292,7 +294,7 @@ const ReportPDF = ({ projectId, projectName }: ReportPDFProps) => {
                 </div>
               ))}
             </div>
-            {data.materials.filter((m) => m.deficit > 0).slice(0, 5).map((m: any) => (
+            {data.materials.filter((m) => m.deficit > 0).slice(0, 5).map((m: Material) => (
               <div key={m.id} className="flex items-center justify-between py-1.5 border-t border-border first:border-0">
                 <span className="text-[10px] text-foreground truncate flex-1">{m.name}</span>
                 <span className="text-[9px] text-destructive font-mono ml-2">-{m.deficit} {m.unit}</span>
@@ -305,7 +307,7 @@ const ReportPDF = ({ projectId, projectName }: ReportPDFProps) => {
         {data && data.crews.filter((c) => c.is_active).length > 0 && (
           <div className="bg-muted border border-border rounded-xl p-3">
             <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-2.5">👷 Бригады на объекте</div>
-            {data.crews.filter((c) => c.is_active).map((crew: any) => (
+            {data.crews.filter((c) => c.is_active).map((crew: Crew) => (
               <div key={crew.id} className="flex items-center gap-2.5 py-1.5 border-b border-border last:border-0">
                 <div className="w-6 h-6 rounded-full bg-primary/12 text-primary text-[9px] font-bold flex items-center justify-center flex-shrink-0">{crew.headcount}</div>
                 <div className="flex-1">

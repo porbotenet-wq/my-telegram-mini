@@ -156,7 +156,7 @@ const CreateProjectWizard = ({ onBack, onCreated }: Props) => {
           work_type: (["nvf", "spk", "both"].includes(p.work_type) ? p.work_type : prev.work_type) as ProjectData["work_type"],
           start_date: p.start_date || prev.start_date, end_date: p.end_date || prev.end_date,
           contacts: p.contacts?.length > 0
-            ? p.contacts.map((c: any) => ({ role: c.role || "", name: c.name || "", phone: c.phone || "", email: c.email || "" }))
+            ? p.contacts.map((c: { role?: string; name?: string; phone?: string; email?: string }) => ({ role: c.role || "", name: c.name || "", phone: c.phone || "", email: c.email || "" }))
             : prev.contacts,
         }));
         setFilled(true);

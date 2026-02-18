@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
+import type { ContactInfo } from "@/types/database";
 
 interface ProjectCardProps {
   projectId: string;
@@ -98,7 +99,7 @@ const ProjectCard = ({ projectId, onBack }: ProjectCardProps) => {
           <div className="text-[10px] font-bold uppercase tracking-wider text-t3 mb-2 flex items-center gap-2">
             👥 Контакты <span className="flex-1 h-px bg-border" />
           </div>
-          {contacts.map((c: any, i: number) => (
+          {contacts.map((c: ContactInfo, i: number) => (
             <div key={i} className="flex items-center gap-2 py-1.5 border-b border-border last:border-0">
               <div className="w-6 h-6 rounded-full bg-primary/12 text-primary text-[10px] font-bold flex items-center justify-center flex-shrink-0">
                 {(c.role || "?")[0]}

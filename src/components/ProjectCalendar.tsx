@@ -95,7 +95,7 @@ const ProjectCalendar = ({ projectId }: ProjectCalendarProps) => {
       ]);
 
       const synced: CalEvent[] = [
-        ...(workRes.data || []).map((w: any) => ({
+        ...(workRes.data || []).map((w: { id: string; name: string; start_date?: string; end_date?: string }) => ({
           id: `gpr_${w.id}`,
           project_id: projectId,
           title: w.name,

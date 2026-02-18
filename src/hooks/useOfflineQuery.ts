@@ -47,7 +47,7 @@ export function useOfflineQuery<T>({ queryKey, queryFn, enabled = true, staleTim
             setIsFromCache(false);
             await setItem(queryKey, result);
           }
-        } catch (e: any) {
+        } catch (e: unknown) {
           if (!cancelled) setError(e.message || "Ошибка загрузки");
         }
       }

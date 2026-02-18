@@ -1,40 +1,46 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAuth } from "@/hooks/useAuth";
 import TopBar from "@/components/TopBar";
 import TabBar from "@/components/TabBar";
-import Dashboard from "@/components/Dashboard";
-import Floors from "@/components/Floors";
-import PlanFact from "@/components/PlanFact";
-import Crew from "@/components/Crew";
-import SupplyDashboard from "@/components/SupplyDashboard";
-import GPR from "@/components/GPR";
-import Alerts from "@/components/Alerts";
 import AuthScreen from "@/components/AuthScreen";
-import ProjectList from "@/components/ProjectList";
-import ProjectCard from "@/components/ProjectCard";
-import CreateProjectWizard from "@/components/CreateProjectWizard";
-import SheetsSync from "@/components/SheetsSync";
-import Documents from "@/components/Documents";
-import Workflow from "@/components/Workflow";
-import AIAssistant from "@/components/AIAssistant";
-import ProjectCalendar from "@/components/ProjectCalendar";
-
-// ── Новые модули ──────────────────────────────────────────
 import OfflineBar from "@/components/OfflineBar";
-import DirectorDashboard from "@/components/DirectorDashboard";
-import GamificationPanel from "@/components/GamificationPanel";
-import ForemenAI from "@/components/ForemenAI";
-import ReportPDF from "@/components/ReportPDF";
 
 import { useOfflineCache } from "@/hooks/useOfflineCache";
-import InstallPWA from "@/components/InstallPWA";
+
+// ── Lazy-loaded компоненты ────────────────────────────────
+const Dashboard = lazy(() => import("@/components/Dashboard"));
+const Floors = lazy(() => import("@/components/Floors"));
+const PlanFact = lazy(() => import("@/components/PlanFact"));
+const Crew = lazy(() => import("@/components/Crew"));
+const SupplyDashboard = lazy(() => import("@/components/SupplyDashboard"));
+const GPR = lazy(() => import("@/components/GPR"));
+const Alerts = lazy(() => import("@/components/Alerts"));
+const ProjectList = lazy(() => import("@/components/ProjectList"));
+const ProjectCard = lazy(() => import("@/components/ProjectCard"));
+const CreateProjectWizard = lazy(() => import("@/components/CreateProjectWizard"));
+const SheetsSync = lazy(() => import("@/components/SheetsSync"));
+const Documents = lazy(() => import("@/components/Documents"));
+const Workflow = lazy(() => import("@/components/Workflow"));
+const AIAssistant = lazy(() => import("@/components/AIAssistant"));
+const ProjectCalendar = lazy(() => import("@/components/ProjectCalendar"));
+const DirectorDashboard = lazy(() => import("@/components/DirectorDashboard"));
+const GamificationPanel = lazy(() => import("@/components/GamificationPanel"));
+const ForemenAI = lazy(() => import("@/components/ForemenAI"));
+const ReportPDF = lazy(() => import("@/components/ReportPDF"));
+const InstallPWA = lazy(() => import("@/components/InstallPWA"));
 
 // ── Типы ─────────────────────────────────────────────────
 type Screen = "projects" | "create" | "project" | "director";
 
 // ── Вкладки для прораба ──────────────────────────────────
 const FOREMAN_TABS = ["foreman1", "foreman2", "foreman3"];
+
+const LazyFallback = () => (
+  <div className="flex items-center justify-center py-12">
+    <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+  </div>
+);
 
 const Index = () => {
   const { user, loading, roles } = useAuth();
@@ -78,6 +84,7 @@ const Index = () => {
     return (
       <div className="min-h-screen bg-background relative">
         <OfflineBar />
+        <Suspense fallback={<LazyFallback />}>
         <DirectorDashboard
           onOpenProject={(id) => {
             setSelectedProjectId(id);
@@ -102,6 +109,7 @@ const Index = () => {
             <GamificationPanel userId={user.id} projectId={selectedProjectId || ""} userRole={userRole} />
           </div>
         )}
+        </Suspense>
       </div>
     );
   }
@@ -111,6 +119,7 @@ const Index = () => {
     return (
       <div className="relative">
         <OfflineBar />
+        <Suspense fallback={<LazyFallback />}>
         <ProjectList
           onSelectProject={(id, name) => {
             setSelectedProjectId(id);
@@ -120,6 +129,7 @@ const Index = () => {
           }}
           onCreateNew={() => setScreen("create")}
         />
+        </Suspense>
       </div>
     );
   }
@@ -127,6 +137,7 @@ const Index = () => {
   // ── Создание проекта ──────────────────────────────────────
   if (screen === "create") {
     return (
+      <Suspense fallback={<LazyFallback />}>
       <CreateProjectWizard
         onBack={() => setScreen("projects")}
         onCreated={(id, name) => {
@@ -136,6 +147,7 @@ const Index = () => {
           setScreen("project");
         }}
       />
+      </Suspense>
     );
   }
 
@@ -206,17 +218,23 @@ const Index = () => {
       {/* ── Контент ── */}
       <div className="animate-fade-in">
         <ErrorBoundary>
+          <Suspense fallback={<LazyFallback />}>
           {renderTab()}
+          </Suspense>
         </ErrorBoundary>
       </div>
 
       {/* ── ИИ-ассистент (FAB) — только не для прораба, у него своя вкладка ── */}
       {!isForeman && (
+        <Suspense fallback={null}>
         <AIAssistant projectId={pid} projectName={projectName} userRole={userRole} />
+        </Suspense>
       )}
 
       {/* ── PWA Install ── */}
+      <Suspense fallback={null}>
       <InstallPWA />
+      </Suspense>
 
       {/* ── Нижний отступ ── */}
       <div className="h-[70px]" />
