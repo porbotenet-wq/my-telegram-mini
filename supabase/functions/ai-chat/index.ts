@@ -1,9 +1,10 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { authenticate } from "../_shared/authMiddleware.ts";
+import { checkRateLimit } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-telegram-init-data",
 };
 
 const SYSTEM_PROMPT = `Ты — STSphera AI, интеллектуальный ассистент для управления строительными фасадными проектами. 
@@ -22,11 +23,47 @@ const SYSTEM_PROMPT = `Ты — STSphera AI, интеллектуальный а
 - Если спрашивают про конкретные цифры которых у тебя нет — скажи что нужно свериться с актуальными данными в системе
 - Отвечай на русском языке`;
 
-serve(async (req) => {
+// 10 requests per minute per user
+const RATE_LIMIT = 10;
+const RATE_WINDOW_MS = 60_000;
+
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // 1. Auth
+  const user = await authenticate(req);
+  if (!user) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  // 2. Rate limit
+  const { allowed, remaining, retryAfterMs } = checkRateLimit(
+    `ai-chat:${user.id}`,
+    RATE_LIMIT,
+    RATE_WINDOW_MS,
+  );
+
+  if (!allowed) {
+    return new Response(
+      JSON.stringify({ error: "Rate limit exceeded. Try again later." }),
+      {
+        status: 429,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "Retry-After": String(Math.ceil(retryAfterMs / 1000)),
+          "X-RateLimit-Remaining": "0",
+        },
+      },
+    );
+  }
+
+  // 3. Process request
   try {
     const { messages, projectName, userRole, systemPrompt } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -51,38 +88,37 @@ serve(async (req) => {
           ],
           stream: true,
         }),
-      }
+      },
     );
 
     if (!response.ok) {
-      if (response.status === 429) {
+      const status = response.status;
+      if (status === 429) {
         return new Response(
-          JSON.stringify({ error: "Rate limit exceeded" }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Payment required" }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "AI gateway rate limit" }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
       const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
+      console.error("AI gateway error:", status, t);
       return new Response(
         JSON.stringify({ error: "AI gateway error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
     return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "text/event-stream",
+        "X-RateLimit-Remaining": String(remaining),
+      },
     });
   } catch (e) {
     console.error("ai-chat error:", e);
     return new Response(
       JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
