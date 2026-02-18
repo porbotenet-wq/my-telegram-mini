@@ -70,8 +70,8 @@ export async function projectDetailScreen(projectId: string) {
   const { data: pfData } = await supabase
     .from("plan_fact").select("plan_value, fact_value").eq("project_id", projectId);
 
-  const totalPlan = (pfData || []).reduce((s: number, r: any) => s + Number(r.plan_value || 0), 0);
-  const totalFact = (pfData || []).reduce((s: number, r: any) => s + Number(r.fact_value || 0), 0);
+  const totalPlan = (pfData || []).reduce((s: number, r: { plan_value: number }) => s + Number(r.plan_value || 0), 0);
+  const totalFact = (pfData || []).reduce((s: number, r: { fact_value: number }) => s + Number(r.fact_value || 0), 0);
   const progress = totalPlan > 0 ? Math.round((totalFact / totalPlan) * 100) : 0;
 
   const text =
@@ -84,6 +84,7 @@ export async function projectDetailScreen(projectId: string) {
   const keyboard = inlineKeyboard([
     [{ text: "📝 Создать отчёт", callback_data: buildCallback("report", "start", projectId) }],
     [{ text: `⚠️ Алерты (${alertsCount || 0})`, callback_data: buildCallback("list", "alerts", projectId) }],
+    [{ text: "📝 Согласования", callback_data: buildCallback("list", "approvals", projectId) }],
     [{ text: "📊 Аналитика", web_app: { url: `${WEBAPP_URL}/?project=${projectId}&tab=dash` } }],
     [{ text: "◀️ Назад", callback_data: buildCallback("list", "projects") }],
   ]);
@@ -112,9 +113,9 @@ export async function alertsListScreen(projectId?: string) {
   const icons: Record<string, string> = { critical: "🔴", high: "🔴", normal: "⚠️", medium: "⚠️", low: "ℹ️", info: "ℹ️" };
   const text =
     `⚠️ <b>Активные алерты (${alerts.length}):</b>\n\n` +
-    alerts.map((a: any, i: number) => `${icons[a.priority] || "ℹ️"} ${i + 1}. ${a.title}`).join("\n");
+    alerts.map((a: { priority: string; title: string }, i: number) => `${icons[a.priority] || "ℹ️"} ${i + 1}. ${a.title}`).join("\n");
 
-  const buttons = alerts.map((a: any) => [
+  const buttons = alerts.map((a: { id: string; priority: string; title: string }) => [
     { text: `${icons[a.priority] || "ℹ️"} ${a.title.slice(0, 30)}`, callback_data: buildCallback("alert", "detail", a.id) },
   ]);
   buttons.push([{ text: "◀️ Назад", callback_data: projectId ? buildCallback("show", "project", projectId) : buildCallback("home") }]);
@@ -184,9 +185,9 @@ export async function approvalsListScreen(projectId?: string) {
 
   const text =
     `📝 <b>Согласования (${approvals.length} ожидают):</b>\n\n` +
-    approvals.map((a: any, i: number) => `${typeIcons[a.type] || "📌"} ${i + 1}. ${a.title}\n   Уровень ${a.level} · ${new Date(a.created_at).toLocaleDateString("ru-RU")}`).join("\n\n");
+    approvals.map((a: { type: string; title: string; level: number; created_at: string }, i: number) => `${typeIcons[a.type] || "📌"} ${i + 1}. ${a.title}\n   Уровень ${a.level} · ${new Date(a.created_at).toLocaleDateString("ru-RU")}`).join("\n\n");
 
-  const buttons = approvals.map((a: any) => [
+  const buttons = approvals.map((a: { id: string; title: string }) => [
     { text: `✅ ${a.title.slice(0, 20)}`, callback_data: buildCallback("approve", "yes", a.id) },
     { text: `❌`, callback_data: buildCallback("approve", "no", a.id) },
   ]);
@@ -214,7 +215,7 @@ export async function approvalDetailScreen(approvalId: string) {
     (a.description ? `\n${a.description}\n` : "") +
     `\n📅 ${new Date(a.created_at).toLocaleString("ru-RU")}`;
 
-  const buttons: any[][] = [];
+  const buttons: { text: string; callback_data: string }[][] = [];
   if (a.status === "pending") {
     buttons.push([
       { text: "✅ Согласовать", callback_data: buildCallback("approve", "yes", a.id) },

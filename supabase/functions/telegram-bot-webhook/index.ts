@@ -116,7 +116,7 @@ async function handleAIChat(chatId: number, userMessage: string) {
 }
 
 // ─── CALLBACK QUERY handler ─────────────────────────
-async function handleCallback(cb: any) {
+async function handleCallback(cb: Record<string, any>) {
   const chatId = cb.message.chat.id;
   const msgId = cb.message.message_id;
   const { action, entity, id, extra } = parseCallback(cb.data || "");
@@ -195,12 +195,12 @@ async function handleCallback(cb: any) {
       return;
     }
 
-    const lines = tasks.map((t: any, i: number) => {
+    const lines = tasks.map((t: { code: string; name: string; status: string; planned_date?: string }, i: number) => {
       const dl = t.planned_date ? ` · 📅 ${t.planned_date}` : "";
       return `${i + 1}. <b>${t.code}</b> ${t.name}\n   ${statusLabel(t.status)}${dl}`;
     });
 
-    const buttons = tasks.map((t: any) => [
+    const buttons = tasks.map((t: { id: string; code: string }) => [
       { text: `🔧 ${t.code}`, callback_data: `task_start:${t.id}` },
       { text: `✅ ${t.code}`, callback_data: `task_done:${t.id}` },
     ]);
@@ -259,7 +259,7 @@ async function handleCallback(cb: any) {
         .select("id, section")
         .eq("project_id", id);
 
-      const sections = [...new Set((zones || []).map((z: any) => z.section))];
+      const sections = [...new Set((zones || []).map((z: { section: string }) => z.section))];
       const buttons = sections.slice(0, 5).map((s) => [{ text: s, callback_data: `zone:select:${s}` }]);
       buttons.push([{ text: "◀️ Назад", callback_data: `show:project:${id}` }]);
 
@@ -371,16 +371,53 @@ async function handleCallback(cb: any) {
 }
 
 // ─── TEXT MESSAGE handler ────────────────────────────
-async function handleTextMessage(msg: any) {
+async function handleTextMessage(msg: Record<string, any>) {
   const chatId = msg.chat.id;
   const text = (msg.text || "").trim();
 
   // /start with deep link
   if (text === "/start" || text.startsWith("/start ")) {
     const param = text.split(" ")[1];
+
+    // Deep link: project
     if (param?.startsWith("project_")) {
       const projectId = param.replace("project_", "");
       const screen = await projectDetailScreen(projectId);
+      await sendMessage(chatId, screen.text, { reply_markup: screen.keyboard });
+      return;
+    }
+
+    // Deep link: report for project
+    if (param?.startsWith("report_")) {
+      const projectId = param.replace("report_", "");
+      const { data: p } = await supabase.from("projects").select("name").eq("id", projectId).single();
+      if (p) {
+        await setState(chatId, "report:select_zone", { project_id: projectId, project_name: p.name });
+        const { data: zones } = await supabase
+          .from("work_types")
+          .select("id, section")
+          .eq("project_id", projectId);
+        const sections = [...new Set((zones || []).map((z: { section: string }) => z.section))];
+        const buttons = sections.slice(0, 5).map((s) => [{ text: s, callback_data: `zone:select:${s}` }]);
+        buttons.push([{ text: "🏠 Домой", callback_data: "home" }]);
+        await sendMessage(chatId, `📝 Отчёт: <b>${p.name}</b>\n\nВыберите участок:`, {
+          reply_markup: { inline_keyboard: buttons },
+        });
+        return;
+      }
+    }
+
+    // Deep link: approval
+    if (param?.startsWith("approval_")) {
+      const approvalId = param.replace("approval_", "");
+      const screen = await approvalDetailScreen(approvalId);
+      await sendMessage(chatId, screen.text, { reply_markup: screen.keyboard });
+      return;
+    }
+
+    // Deep link: approvals list
+    if (param === "approvals") {
+      const screen = await approvalsListScreen();
       await sendMessage(chatId, screen.text, { reply_markup: screen.keyboard });
       return;
     }
@@ -422,7 +459,7 @@ async function handleTextMessage(msg: any) {
       await sendMessage(chatId, "✨ У вас нет открытых задач!");
       return;
     }
-    const lines = tasks.map((t: any, i: number) => {
+    const lines = tasks.map((t: { code: string; name: string; status: string; planned_date?: string }, i: number) => {
       const dl = t.planned_date ? ` · 📅 ${t.planned_date}` : "";
       return `${i + 1}. <b>${t.code}</b> ${t.name}\n   ${statusLabel(t.status)}${dl}`;
     });
@@ -437,10 +474,28 @@ async function handleTextMessage(msg: any) {
       `/start — Главное меню`,
       `/myid — Узнать Chat ID`,
       `/tasks — Мои задачи`,
+      `/approvals — Согласования`,
       `/help — Эта справка`,
+      ``,
+      `<b>Deep links:</b>`,
+      `<code>t.me/bot?start=project_{id}</code> — Проект`,
+      `<code>t.me/bot?start=report_{id}</code> — Отчёт`,
+      `<code>t.me/bot?start=approval_{id}</code> — Согласование`,
+      `<code>t.me/bot?start=approvals</code> — Все согласования`,
       ``,
       `Или просто напишите вопрос — AI-ассистент ответит.`,
     ].join("\n"));
+    return;
+  }
+
+  if (text === "/approvals") {
+    const userId = await findUserByChatId(String(chatId));
+    if (!userId) {
+      await sendMessage(chatId, "⚠️ Аккаунт не привязан. Используйте /myid.");
+      return;
+    }
+    const screen = await approvalsListScreen();
+    await sendMessage(chatId, screen.text, { reply_markup: screen.keyboard });
     return;
   }
 
