@@ -27,15 +27,30 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    if (action === "set_menu") {
+      // Set bot commands
+      const commandsRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/setMyCommands`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          commands: [
+            { command: "tasks", description: "📋 Мои задачи" },
+            { command: "myid", description: "🆔 Мой Chat ID" },
+            { command: "help", description: "❓ Справка" },
+          ],
+        }),
+      });
+      const cmdData = await commandsRes.json();
+      return new Response(JSON.stringify(cmdData), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     if (action === "get_webhook") {
       const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo`);
       const data = await res.json();
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    if (action === "send_test") {
-      const { chat_id, text } = await req.json().catch(() => ({ chat_id: null, text: null }));
-      // Just return bot info
+    if (action === "get_me") {
       const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getMe`);
       const data = await res.json();
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
