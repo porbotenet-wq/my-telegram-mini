@@ -1,38 +1,61 @@
 import { getAllowedTabs } from "@/data/roleConfig";
 
+interface ExtraTab {
+  id: string;
+  label: string;
+  icon?: string;
+}
+
 interface TabBarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   showProjectCard?: boolean;
   userRoles?: string[];
+  extraTabs?: ExtraTab[];
 }
 
-const tabs = [
-  { id: "card", label: "📋 Объект" },
-  { id: "dash", label: "📊 Дашборд" },
+const BASE_TABS = [
+  { id: "card",   label: "📋 Объект" },
+  { id: "dash",   label: "📊 Дашборд" },
   { id: "floors", label: "🏗️ Этажи" },
-  { id: "pf", label: "📋 План-Факт" },
-  { id: "crew", label: "👷 Бригады" },
-  { id: "sup", label: "📦 Снабжение" },
-  { id: "gpr", label: "📆 ГПР" },
-  { id: "wflow", label: "🔄 Процессы" },
+  { id: "pf",     label: "📋 План-Факт" },
+  { id: "crew",   label: "👷 Бригады" },
+  { id: "sup",    label: "📦 Снабжение" },
+  { id: "gpr",    label: "📆 ГПР" },
+  { id: "wflow",  label: "🔄 Процессы" },
   { id: "alerts", label: "🔔 Алерты" },
   { id: "sheets", label: "📊 Sheets" },
-  { id: "docs", label: "📄 Документы" },
+  { id: "docs",   label: "📄 Документы" },
 ];
 
-const TabBar = ({ activeTab, onTabChange, showProjectCard, userRoles }: TabBarProps) => {
+// Системные служебные вкладки (всегда в конце, не в roleConfig)
+const SYSTEM_TABS = [
+  { id: "report", label: "📄 Отчёт" },
+  { id: "xp",     label: "🏆 XP" },
+];
+
+const TabBar = ({ activeTab, onTabChange, showProjectCard, userRoles, extraTabs }: TabBarProps) => {
   const allowedTabs = getAllowedTabs(userRoles || []);
 
-  const visibleTabs = tabs.filter((t) => {
+  // Основные вкладки с учётом ролей
+  const visibleBase = BASE_TABS.filter((t) => {
     if (t.id === "card" && !showProjectCard) return false;
     if (allowedTabs && !allowedTabs.includes(t.id)) return false;
     return true;
   });
 
+  // Дополнительные (например, ИИ для прораба)
+  const extraMapped = (extraTabs || []).map((t) => ({
+    id: t.id,
+    label: t.icon ? `${t.icon} ${t.label}` : t.label,
+  }));
+
+  // Итоговый список: базовые + extra + системные
+  const allTabs = [...visibleBase, ...extraMapped, ...SYSTEM_TABS];
+
   return (
-    <div className="flex gap-0.5 px-2.5 py-1.5 bg-bg1 overflow-x-auto scrollbar-none">
-      {visibleTabs.map((tab) => (
+    <div className="flex gap-0.5 px-2.5 py-1.5 bg-bg1 overflow-x-auto scrollbar-none border-b border-border">
+      {allTabs.map((tab) => (
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
