@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import PhotoUpload from "@/components/PhotoUpload";
+import { useXP } from "@/hooks/useXP";
+import XpToast from "@/components/XpToast";
 
 interface PlanFactProps {
   projectId: string;
@@ -12,6 +14,7 @@ const PlanFact = ({ projectId }: PlanFactProps) => {
   const [records, setRecords] = useState<any[]>([]);
   const [workTypes, setWorkTypes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { award, lastXp, clearXp } = useXP(projectId);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -47,6 +50,8 @@ const PlanFact = ({ projectId }: PlanFactProps) => {
 
   return (
     <div className="animate-fade-in p-2.5">
+      {lastXp && <XpToast xp={lastXp.xp} action={lastXp.action} onDone={clearXp} />}
+
       {!hasData && (
         <div className="text-center py-8">
           <div className="text-2xl mb-2">📋</div>
@@ -97,6 +102,11 @@ const PlanFact = ({ projectId }: PlanFactProps) => {
                   onPhotosChange={async (urls) => {
                     await supabase.from("plan_fact").update({ photo_urls: urls }).eq("id", r.id);
                     setRecords(prev => prev.map(rec => rec.id === r.id ? { ...rec, photo_urls: urls } : rec));
+                  }}
+                  onUploadComplete={(count) => {
+                    for (let i = 0; i < count; i++) {
+                      award("photo_upload", { source: "plan_fact", record_id: r.id });
+                    }
                   }}
                   folder={`plan-fact/${r.id}`}
                   maxPhotos={5}

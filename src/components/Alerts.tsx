@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useXP } from "@/hooks/useXP";
 import { Loader2 } from "lucide-react";
 import PhotoUpload from "@/components/PhotoUpload";
+import XpToast from "@/components/XpToast";
 
 interface AlertsProps {
   projectId: string;
@@ -28,9 +31,12 @@ const iconMap: Record<string, string> = {
 };
 
 const Alerts = ({ projectId }: AlertsProps) => {
+  const { user } = useAuth();
+  const { award, lastXp, clearXp } = useXP(projectId);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
+  const [resolving, setResolving] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -45,6 +51,20 @@ const Alerts = ({ projectId }: AlertsProps) => {
     };
     fetchData();
   }, [projectId]);
+
+  const handleResolve = async (alertId: string) => {
+    if (!user) return;
+    setResolving(alertId);
+    const { error } = await supabase
+      .from("alerts")
+      .update({ is_resolved: true, resolved_at: new Date().toISOString(), resolved_by: user.id })
+      .eq("id", alertId);
+    if (!error) {
+      setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, is_resolved: true } : a));
+      await award("alert_resolved", { alert_id: alertId });
+    }
+    setResolving(null);
+  };
 
   if (loading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -75,6 +95,8 @@ const Alerts = ({ projectId }: AlertsProps) => {
 
   return (
     <div className="animate-fade-in p-2.5">
+      {lastXp && <XpToast xp={lastXp.xp} action={lastXp.action} onDone={clearXp} />}
+
       <div className="text-[10px] font-bold uppercase tracking-wider text-t3 my-3.5 flex items-center gap-2">
         Уведомления ({alerts.length}) <span className="flex-1 h-px bg-border" />
       </div>
@@ -107,8 +129,16 @@ const Alerts = ({ projectId }: AlertsProps) => {
                   {new Date(a.created_at).toLocaleString("ru-RU", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}
                 </div>
               </div>
-              {a.is_resolved && (
+              {a.is_resolved ? (
                 <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-primary/12 text-primary self-start">✅</span>
+              ) : (
+                <button
+                  onClick={() => handleResolve(a.id)}
+                  disabled={resolving === a.id}
+                  className="text-[9px] font-bold px-2 py-1 rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors self-start disabled:opacity-50"
+                >
+                  {resolving === a.id ? "..." : "Закрыть"}
+                </button>
               )}
             </div>
             <div className="px-2.5 pb-2">

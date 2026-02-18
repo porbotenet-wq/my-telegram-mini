@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import PhotoUpload from "@/components/PhotoUpload";
+import { useXP } from "@/hooks/useXP";
+import XpToast from "@/components/XpToast";
 
 interface FloorsProps {
   projectId: string;
@@ -19,6 +21,7 @@ const Floors = ({ projectId }: FloorsProps) => {
   const [floors, setFloors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedFloor, setSelectedFloor] = useState<number | null>(null);
+  const { award, lastXp, clearXp } = useXP(projectId);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -61,6 +64,7 @@ const Floors = ({ projectId }: FloorsProps) => {
 
   return (
     <div className="animate-fade-in p-2.5">
+      {lastXp && <XpToast xp={lastXp.xp} action={lastXp.action} onDone={clearXp} />}
       <div className="bg-bg2 border border-border rounded-lg p-3.5 mb-2.5">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[11px] font-bold uppercase tracking-wide text-t3">Матрица по этажам</span>
@@ -166,6 +170,9 @@ const Floors = ({ projectId }: FloorsProps) => {
                       onPhotosChange={async (urls) => {
                         await supabase.from("floors").update({ photo_urls: urls }).eq("id", fl.id);
                         setFloors(prev => prev.map(f => f.id === fl.id ? { ...f, photo_urls: urls } : f));
+                      }}
+                      onUploadComplete={(count) => {
+                        for (let i = 0; i < count; i++) award("photo_upload", { source: "floors", floor_id: fl.id });
                       }}
                       folder={`floors/${fl.id}`}
                       maxPhotos={5}
