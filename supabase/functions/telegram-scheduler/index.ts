@@ -1,196 +1,248 @@
+// Telegram Scheduler — Edge Function for scheduled notifications
+// Actions: daily_summary, report_reminder, deadline_check
+
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendMessage, inlineKeyboard } from "../_shared/botUtils.ts";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+);
+const WEBAPP_URL = Deno.env.get("WEBAPP_URL")!;
 
-// Role → departments mapping
-const ROLE_DEPARTMENTS: Record<string, string[]> = {
-  director: [],
-  pm: [],
-  project: ["Проектный", "Административный"],
-  supply: ["Снабжение"],
-  production: ["Производство"],
-  foreman1: ["Производство"],
-  foreman2: ["Производство"],
-  foreman3: ["Производство"],
-  pto: ["ПТО"],
-  inspector: ["Контроль"],
-};
+// ─── Helpers ─────────────────────────────────────────────────
 
-async function callNotify(payload: Record<string, unknown>) {
-  await fetch(`${SUPABASE_URL}/functions/v1/telegram-notify`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${ANON_KEY}`,
-    },
-    body: JSON.stringify(payload),
-  });
+interface Profile {
+  user_id: string;
+  display_name: string;
+  telegram_chat_id: string;
 }
 
-function statusLabel(s: string) {
-  return ({
-    "Ожидание": "⏳",
-    "В работе": "🔧",
-  } as Record<string, string>)[s] ?? "📋";
+async function getRecipients(): Promise<Profile[]> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("user_id, display_name, telegram_chat_id")
+    .not("telegram_chat_id", "is", null);
+  return (data || []) as Profile[];
 }
 
-Deno.serve(async (req) => {
-  try {
-    const today = new Date();
-    const todayStr = today.toISOString().split("T")[0];
-    const threeDaysLater = new Date(today.getTime() + 3 * 86400000).toISOString().split("T")[0];
+function progressBar(pct: number): string {
+  const filled = Math.round(pct / 10);
+  return "▓".repeat(filled) + "░".repeat(10 - filled) + ` ${pct}%`;
+}
 
-    // 1. Find tasks with deadlines in the next 3 days (not done)
-    const { data: soonTasks } = await supabase
-      .from("ecosystem_tasks")
-      .select("id, code, name, planned_date, status, department, assigned_to, project_id")
-      .in("status", ["Ожидание", "В работе"])
-      .gte("planned_date", todayStr)
-      .lte("planned_date", threeDaysLater);
+// ─── Action: daily_summary ───────────────────────────────────
 
-    // 2. Find overdue tasks
-    const { data: overdueTasks } = await supabase
-      .from("ecosystem_tasks")
-      .select("id, code, name, planned_date, status, department, assigned_to, project_id")
-      .in("status", ["Ожидание", "В работе"])
-      .lt("planned_date", todayStr)
-      .not("planned_date", "is", null);
+async function dailySummary() {
+  const { data: projects } = await supabase
+    .from("projects")
+    .select("id, name, code, end_date")
+    .eq("status", "active");
 
-    // Get project names for context
-    const projectIds = new Set<string>();
-    [...(soonTasks || []), ...(overdueTasks || [])].forEach(t => {
-      if (t.project_id) projectIds.add(t.project_id);
-    });
-    const projectNames: Record<string, string> = {};
-    if (projectIds.size > 0) {
-      const { data: projects } = await supabase
-        .from("projects")
-        .select("id, name")
-        .in("id", [...projectIds]);
-      (projects || []).forEach(p => { projectNames[p.id] = p.name; });
-    }
+  if (!projects || projects.length === 0) return { sent: 0 };
 
-    // Send deadline reminders
-    for (const task of (soonTasks || [])) {
-      const daysLeft = Math.ceil((new Date(task.planned_date!).getTime() - today.getTime()) / 86400000);
-      await callNotify({
-        event: "task_deadline_soon",
-        projectId: task.project_id,
-        taskId: task.id,
-        data: {
-          taskCode: task.code,
-          taskName: task.name,
-          plannedDate: task.planned_date,
-          daysLeft,
-          status: task.status,
-          projectName: task.project_id ? projectNames[task.project_id] : undefined,
-        },
-      });
-    }
+  // Gather stats per project in parallel
+  const stats = await Promise.all(
+    projects.map(async (p) => {
+      const [pfRes, alertsRes] = await Promise.all([
+        supabase.from("plan_fact").select("plan_value, fact_value").eq("project_id", p.id),
+        supabase
+          .from("alerts")
+          .select("id", { count: "exact", head: true })
+          .eq("project_id", p.id)
+          .eq("is_resolved", false),
+      ]);
+      const pf = pfRes.data || [];
+      const plan = pf.reduce((s, r) => s + Number(r.plan_value || 0), 0);
+      const fact = pf.reduce((s, r) => s + Number(r.fact_value || 0), 0);
+      const prog = plan > 0 ? Math.round((fact / plan) * 100) : 0;
+      return {
+        name: p.name,
+        code: p.code,
+        id: p.id,
+        prog,
+        alertsCount: alertsRes.count ?? 0,
+      };
+    }),
+  );
 
-    // Send overdue notifications
-    for (const task of (overdueTasks || [])) {
-      const daysOverdue = Math.ceil((today.getTime() - new Date(task.planned_date!).getTime()) / 86400000);
-      await callNotify({
-        event: "task_overdue",
-        projectId: task.project_id,
-        taskId: task.id,
-        data: {
-          taskCode: task.code,
-          taskName: task.name,
-          plannedDate: task.planned_date,
-          daysOverdue,
-          projectName: task.project_id ? projectNames[task.project_id] : undefined,
-        },
-      });
-    }
+  const totalAlerts = stats.reduce((s, p) => s + p.alertsCount, 0);
 
-    // 3. Daily digest per user based on role
-    const { data: allUsers } = await supabase
-      .from("profiles")
-      .select("user_id, telegram_chat_id, display_name")
-      .not("telegram_chat_id", "is", null);
+  let text = `📊 <b>Ежедневная сводка</b>\n`;
+  text += `📅 ${new Date().toLocaleDateString("ru-RU")}\n`;
+  text += `━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-    for (const user of (allUsers || [])) {
-      const { data: userRoles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.user_id);
+  for (const p of stats) {
+    text += `🏗 <b>${p.code || p.name}</b>\n`;
+    text += `   ${progressBar(p.prog)}\n`;
+    if (p.alertsCount > 0) text += `   ⚠️ Алертов: ${p.alertsCount}\n`;
+    text += `\n`;
+  }
 
-      const roles = (userRoles || []).map((r: { role: string }) => r.role);
-      if (roles.length === 0) continue;
+  text += `━━━━━━━━━━━━━━━━━━━━━\n`;
+  text += `📋 Объектов: <b>${projects.length}</b> · ⚠️ Алертов: <b>${totalAlerts}</b>`;
 
-      // Determine departments for this user
-      const isManager = roles.includes("director") || roles.includes("pm");
-      const departments = new Set<string>();
-      roles.forEach(role => {
-        const depts = ROLE_DEPARTMENTS[role];
-        if (depts && depts.length > 0) depts.forEach(d => departments.add(d));
-      });
+  const markup = inlineKeyboard([
+    [{ text: "📱 Открыть приложение", web_app: { url: WEBAPP_URL } }],
+  ]);
 
-      // Query tasks: assigned to user OR matching departments
-      let query = supabase
-        .from("ecosystem_tasks")
-        .select("id, code, name, status, department, planned_date, priority")
-        .in("status", ["Ожидание", "В работе"])
-        .order("planned_date", { ascending: true, nullsFirst: false })
-        .limit(20);
+  const recipients = await getRecipients();
+  let sent = 0;
+  for (const r of recipients) {
+    await sendMessage(r.telegram_chat_id, text, { reply_markup: markup });
+    sent++;
+  }
+  return { sent, projects: stats.length, alerts: totalAlerts };
+}
 
-      if (!isManager) {
-        // For non-managers: assigned directly or in their departments
-        if (departments.size > 0) {
-          query = query.or(`assigned_to.eq.${user.user_id},department.in.(${[...departments].join(",")})`);
-        } else {
-          query = query.eq("assigned_to", user.user_id);
-        }
-      }
+// ─── Action: report_reminder ─────────────────────────────────
 
-      const { data: tasks } = await query;
+async function reportReminder() {
+  const today = new Date().toISOString().split("T")[0];
 
-      if (!tasks || tasks.length === 0) continue;
+  const { data: projects } = await supabase
+    .from("projects")
+    .select("id, name, code")
+    .eq("status", "active");
 
-      const urgentCount = tasks.filter(t =>
-        t.planned_date && new Date(t.planned_date) <= new Date(today.getTime() + 2 * 86400000)
-      ).length;
+  if (!projects || projects.length === 0) return { sent: 0 };
 
-      const lines = tasks.slice(0, 10).map((t, i) => {
-        const deadline = t.planned_date ? ` · 📅 ${t.planned_date}` : "";
-        const isUrgent = t.planned_date && new Date(t.planned_date) <= new Date(today.getTime() + 2 * 86400000);
-        return `${i + 1}. ${statusLabel(t.status)} <b>${t.code}</b> ${t.name}${deadline}${isUrgent ? " ‼️" : ""}`;
-      });
+  // Find projects that have NO plan_fact records for today
+  const missing: typeof projects = [];
+  for (const p of projects) {
+    const { count } = await supabase
+      .from("plan_fact")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", p.id)
+      .eq("date", today);
+    if ((count ?? 0) === 0) missing.push(p);
+  }
 
-      const digestText = [
-        `☀️ <b>Доброе утро, ${user.display_name}!</b>`,
-        `📋 Ваши задачи на сегодня: <b>${tasks.length}</b>`,
-        urgentCount > 0 ? `‼️ Срочных: <b>${urgentCount}</b>` : "",
-        ``,
-        ...lines,
-        tasks.length > 10 ? `\n...и ещё ${tasks.length - 10}` : "",
-      ].filter(Boolean).join("\n");
+  if (missing.length === 0) return { sent: 0, missing: 0 };
 
-      await callNotify({
-        event: "daily_digest",
-        userId: user.user_id,
-        data: { digestText },
-      });
-    }
+  let text = `📝 <b>Напоминание об отчётности</b>\n`;
+  text += `📅 ${new Date().toLocaleDateString("ru-RU")}\n`;
+  text += `━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  text += `По следующим объектам нет отчёта за сегодня:\n\n`;
 
-    return new Response(JSON.stringify({
-      ok: true,
-      deadlineSoon: (soonTasks || []).length,
-      overdue: (overdueTasks || []).length,
-      digestsSent: (allUsers || []).length,
-    }), {
+  for (const p of missing) {
+    text += `🔴 <b>${p.code || p.name}</b>\n`;
+  }
+
+  text += `\n⏰ Пожалуйста, внесите данные до конца дня.`;
+
+  const markup = inlineKeyboard([
+    [{ text: "📝 Внести отчёт", web_app: { url: `${WEBAPP_URL}/reports` } }],
+  ]);
+
+  const recipients = await getRecipients();
+  let sent = 0;
+  for (const r of recipients) {
+    await sendMessage(r.telegram_chat_id, text, { reply_markup: markup });
+    sent++;
+  }
+  return { sent, missing: missing.length };
+}
+
+// ─── Action: deadline_check ──────────────────────────────────
+
+async function deadlineCheck() {
+  const now = new Date();
+  const in48h = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+  const todayStr = now.toISOString().split("T")[0];
+  const in48hStr = in48h.toISOString().split("T")[0];
+
+  const { data: events } = await supabase
+    .from("calendar_events")
+    .select("id, title, date, type, priority, project_id, projects(name, code)")
+    .eq("is_done", false)
+    .gte("date", todayStr)
+    .lte("date", in48hStr)
+    .order("date", { ascending: true });
+
+  if (!events || events.length === 0) return { sent: 0, events: 0 };
+
+  const priorityIcon: Record<string, string> = {
+    critical: "🔴",
+    high: "🟠",
+    medium: "🟡",
+    low: "🟢",
+  };
+
+  let text = `⏰ <b>Ближайшие дедлайны (48ч)</b>\n`;
+  text += `━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+  for (const ev of events) {
+    const proj = (ev as any).projects;
+    const projLabel = proj ? (proj.code || proj.name) : "—";
+    const icon = priorityIcon[ev.priority || "medium"] || "🟡";
+    const hoursLeft = Math.round(
+      (new Date(ev.date).getTime() - now.getTime()) / (60 * 60 * 1000),
+    );
+    const timeLabel = hoursLeft <= 0 ? "⚡ сегодня" : `через ${hoursLeft}ч`;
+
+    text += `${icon} <b>${ev.title}</b>\n`;
+    text += `   🏗 ${projLabel} · 📅 ${ev.date} (${timeLabel})\n\n`;
+  }
+
+  text += `━━━━━━━━━━━━━━━━━━━━━\n`;
+  text += `Всего событий: <b>${events.length}</b>`;
+
+  const markup = inlineKeyboard([
+    [{ text: "📅 Календарь", web_app: { url: `${WEBAPP_URL}/calendar` } }],
+  ]);
+
+  const recipients = await getRecipients();
+  let sent = 0;
+  for (const r of recipients) {
+    await sendMessage(r.telegram_chat_id, text, { reply_markup: markup });
+    sent++;
+  }
+  return { sent, events: events.length };
+}
+
+// ─── Main handler ────────────────────────────────────────────
+
+serve(async (req) => {
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
       headers: { "Content-Type": "application/json" },
     });
+  }
+
+  try {
+    const { action } = await req.json();
+
+    let result: Record<string, unknown>;
+
+    switch (action) {
+      case "daily_summary":
+        result = await dailySummary();
+        break;
+      case "report_reminder":
+        result = await reportReminder();
+        break;
+      case "deadline_check":
+        result = await deadlineCheck();
+        break;
+      default:
+        return new Response(
+          JSON.stringify({ error: `Unknown action: ${action}` }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        );
+    }
+
+    return new Response(
+      JSON.stringify({ ok: true, action, ...result }),
+      { headers: { "Content-Type": "application/json" } },
+    );
   } catch (err) {
     console.error("Scheduler error:", err);
-    return new Response(JSON.stringify({ ok: false, error: String(err) }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ ok: false, error: String(err) }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    );
   }
 });
