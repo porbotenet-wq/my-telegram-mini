@@ -171,6 +171,7 @@ export type Database = {
       calendar_events: {
         Row: {
           created_at: string
+          created_by: string | null
           date: string
           description: string | null
           doc_type_1c: string | null
@@ -185,6 +186,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           date: string
           description?: string | null
           doc_type_1c?: string | null
@@ -199,6 +201,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           date?: string
           description?: string | null
           doc_type_1c?: string | null
@@ -603,6 +606,7 @@ export type Database = {
           shipped: number
           status: string
           supplier: string | null
+          supplier_code_1c: string | null
           supplier_inn: string | null
           total_required: number
           unit: string
@@ -625,6 +629,7 @@ export type Database = {
           shipped?: number
           status?: string
           supplier?: string | null
+          supplier_code_1c?: string | null
           supplier_inn?: string | null
           total_required?: number
           unit: string
@@ -647,6 +652,7 @@ export type Database = {
           shipped?: number
           status?: string
           supplier?: string | null
+          supplier_code_1c?: string | null
           supplier_inn?: string | null
           total_required?: number
           unit?: string
@@ -718,9 +724,11 @@ export type Database = {
           quantity: number
           status: string
           supplier: string
+          supplier_code_1c: string | null
           supplier_inn: string | null
           total_amount: number | null
           unit: string
+          updated_at: string | null
         }
         Insert: {
           actual_delivery?: string | null
@@ -738,9 +746,11 @@ export type Database = {
           quantity?: number
           status?: string
           supplier: string
+          supplier_code_1c?: string | null
           supplier_inn?: string | null
           total_amount?: number | null
           unit?: string
+          updated_at?: string | null
         }
         Update: {
           actual_delivery?: string | null
@@ -758,9 +768,11 @@ export type Database = {
           quantity?: number
           status?: string
           supplier?: string
+          supplier_code_1c?: string | null
           supplier_inn?: string | null
           total_amount?: number | null
           unit?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -1307,6 +1319,56 @@ export type Database = {
           user_id: string | null
         }
         Relationships: []
+      }
+      overdue_events: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          date: string | null
+          days_overdue: number | null
+          description: string | null
+          doc_type_1c: string | null
+          end_date: string | null
+          id: string | null
+          is_done: boolean | null
+          priority: string | null
+          project_id: string | null
+          project_name: string | null
+          ref_1c: string | null
+          title: string | null
+          type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      upcoming_events: {
+        Row: {
+          date: string | null
+          days_until: number | null
+          id: string | null
+          is_done: boolean | null
+          project_id: string | null
+          project_name: string | null
+          ref_1c: string | null
+          title: string | null
+          type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
