@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.telegram-scheduler]
 verify_jwt = false
+
+[functions.telegram-manage]
+verify_jwt = false
