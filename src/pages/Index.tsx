@@ -6,7 +6,7 @@ import Dashboard from "@/components/Dashboard";
 import Floors from "@/components/Floors";
 import PlanFact from "@/components/PlanFact";
 import Crew from "@/components/Crew";
-import Supply from "@/components/Supply";
+import SupplyDashboard from "@/components/SupplyDashboard";
 import GPR from "@/components/GPR";
 import Alerts from "@/components/Alerts";
 import AuthScreen from "@/components/AuthScreen";
@@ -148,7 +148,7 @@ const Index = () => {
       case "floors":  return <Floors projectId={pid} />;
       case "pf":      return <PlanFact projectId={pid} />;
       case "crew":    return <Crew projectId={pid} />;
-      case "sup":     return <Supply projectId={pid} />;
+      case "sup":     return <SupplyDashboard projectId={pid} />;
       case "cal":     return <ProjectCalendar projectId={pid} />;
       case "gpr":     return <GPR projectId={pid} />;
       case "alerts":  return <Alerts projectId={pid} />;
