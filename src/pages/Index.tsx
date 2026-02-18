@@ -17,94 +17,121 @@ import SheetsSync from "@/components/SheetsSync";
 import Documents from "@/components/Documents";
 import Workflow from "@/components/Workflow";
 import AIAssistant from "@/components/AIAssistant";
-import { OnboardingFlow } from "@/components/OnboardingFlow";
-import { supabase } from "@/integrations/supabase/client";
-import type { AppRole } from "@/data/jobInstructions";
 
-type Screen = "projects" | "create" | "project";
+// ── Новые модули ──────────────────────────────────────────
+import OfflineBar from "@/components/OfflineBar";
+import DirectorDashboard from "@/components/DirectorDashboard";
+import GamificationPanel from "@/components/GamificationPanel";
+import ForemenAI from "@/components/ForemenAI";
+import ReportPDF from "@/components/ReportPDF";
 
-// Map DB roles to jobInstructions AppRole
-const ROLE_MAP: Record<string, AppRole> = {
-  director: "director",
-  pm: "pm",
-  foreman1: "foreman",
-  foreman2: "foreman",
-  foreman3: "foreman",
-  production: "foreman",
-  pto: "pto",
-  supply: "supply",
-  project: "pm",
-  inspector: "inspector",
-};
+import { useOfflineCache } from "@/hooks/useOfflineCache";
+
+// ── Типы ─────────────────────────────────────────────────
+type Screen = "projects" | "create" | "project" | "director";
+
+// ── Вкладки для прораба ──────────────────────────────────
+const FOREMAN_TABS = ["foreman1", "foreman2", "foreman3"];
 
 const Index = () => {
-  const { user, loading, roles, displayName } = useAuth();
+  const { user, loading, roles } = useAuth();
   const [activeTab, setActiveTab] = useState("dash");
   const [screen, setScreen] = useState<Screen>("projects");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("Проект");
-  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
+  const [showGamification, setShowGamification] = useState(false);
+  const { cacheProjectData } = useOfflineCache();
 
-  // Check onboarding status
+  const isDirector = roles.includes("director");
+  const isForeman = roles.some((r) => FOREMAN_TABS.includes(r));
+  const userRole = roles[0] || "user";
+
+  // ── Кэшируем данные при открытии проекта ────────────────
   useEffect(() => {
-    if (!user) { setOnboardingCompleted(null); return; }
-    supabase
-      .from("profiles")
-      .select("onboarding_completed")
-      .eq("user_id", user.id)
-      .single()
-      .then(({ data }) => {
-        setOnboardingCompleted(data?.onboarding_completed ?? false);
-      });
-  }, [user]);
+    if (selectedProjectId && screen === "project") {
+      cacheProjectData(selectedProjectId);
+    }
+  }, [selectedProjectId, screen]);
 
+  // ── Регистрируем Service Worker ──────────────────────────
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then(() => console.log("SW registered"))
+        .catch((e) => console.warn("SW registration failed:", e));
+    }
+  }, []);
+
+  // ── Загрузка ─────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-muted-foreground text-sm animate-pulse">Загрузка...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          <div className="text-muted-foreground text-[11px]">Загрузка STSphera…</div>
+        </div>
       </div>
     );
   }
 
+  // ── Авторизация ──────────────────────────────────────────
   if (!user) {
     return <AuthScreen />;
   }
 
-  // Show onboarding if not completed and user has a role
-  if (onboardingCompleted === false && roles.length > 0) {
-    const appRole = ROLE_MAP[roles[0]] || "pm";
+  // ── Экран директора — портфель всех проектов ─────────────
+  if (screen === "director" || (isDirector && screen === "projects")) {
     return (
-      <OnboardingFlow
-        role={appRole}
-        userName={displayName || "Коллега"}
-        onComplete={() => setOnboardingCompleted(true)}
-      />
-    );
-  }
-
-  // Still loading onboarding status
-  if (onboardingCompleted === null) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-muted-foreground text-sm animate-pulse">Загрузка...</div>
+      <div className="min-h-screen bg-background relative">
+        <OfflineBar />
+        <DirectorDashboard
+          onOpenProject={(id) => {
+            setSelectedProjectId(id);
+            setActiveTab("dash");
+            setScreen("project");
+          }}
+        />
+        {/* Кнопка геймификации */}
+        <button
+          onClick={() => setShowGamification(true)}
+          className="fixed bottom-6 right-4 z-[100] w-11 h-11 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center text-lg shadow-lg hover:scale-110 transition-transform"
+          title="Мой рейтинг"
+        >
+          🏆
+        </button>
+        {showGamification && user && (
+          <div className="fixed inset-0 z-[200] bg-background animate-fade-in overflow-auto">
+            <div className="sticky top-0 z-10 bg-bg0/90 backdrop-blur border-b border-border px-4 py-3 flex items-center justify-between">
+              <span className="font-bold text-[14px]">🏆 Геймификация</span>
+              <button onClick={() => setShowGamification(false)} className="text-t2 text-[11px] hover:text-t1">Закрыть</button>
+            </div>
+            <GamificationPanel userId={user.id} projectId={selectedProjectId || ""} userRole={userRole} />
+          </div>
+        )}
       </div>
     );
   }
 
+  // ── Список проектов ──────────────────────────────────────
   if (screen === "projects") {
     return (
-      <ProjectList
-        onSelectProject={(id, name) => {
-          setSelectedProjectId(id);
-          setProjectName(name || "Проект");
-          setActiveTab("dash");
-          setScreen("project");
-        }}
-        onCreateNew={() => setScreen("create")}
-      />
+      <div className="relative">
+        <OfflineBar />
+        <ProjectList
+          onSelectProject={(id, name) => {
+            setSelectedProjectId(id);
+            setProjectName(name || "Проект");
+            setActiveTab("dash");
+            setScreen("project");
+          }}
+          onCreateNew={() => setScreen("create")}
+        />
+      </div>
     );
   }
 
+  // ── Создание проекта ──────────────────────────────────────
   if (screen === "create") {
     return (
       <CreateProjectWizard
@@ -119,35 +146,80 @@ const Index = () => {
     );
   }
 
+  // ── Экран проекта ─────────────────────────────────────────
   const pid = selectedProjectId!;
 
   const renderTab = () => {
     switch (activeTab) {
-      case "card": return <ProjectCard projectId={pid} onBack={() => setScreen("projects")} />;
-      case "dash": return <Dashboard projectId={pid} />;
-      case "floors": return <Floors projectId={pid} />;
-      case "pf": return <PlanFact projectId={pid} />;
-      case "crew": return <Crew projectId={pid} />;
-      case "sup": return <Supply projectId={pid} />;
-      case "gpr": return <GPR projectId={pid} />;
-      case "alerts": return <Alerts projectId={pid} />;
-      case "wflow": return <Workflow />;
-      case "sheets": return <SheetsSync />;
-      case "docs": return <Documents projectId={pid} />;
-      default: return <Dashboard projectId={pid} />;
+      case "card":    return <ProjectCard projectId={pid} onBack={() => setScreen("projects")} />;
+      case "dash":    return <Dashboard projectId={pid} />;
+      case "floors":  return <Floors projectId={pid} />;
+      case "pf":      return <PlanFact projectId={pid} />;
+      case "crew":    return <Crew projectId={pid} />;
+      case "sup":     return <Supply projectId={pid} />;
+      case "gpr":     return <GPR projectId={pid} />;
+      case "alerts":  return <Alerts projectId={pid} />;
+      case "wflow":   return <Workflow />;
+      case "sheets":  return <SheetsSync />;
+      case "docs":    return <Documents projectId={pid} />;
+      // ── Новые вкладки ──
+      case "ai":      return <ForemenAI projectId={pid} projectName={projectName} userRole={userRole} />;
+      case "report":  return <ReportPDF projectId={pid} projectName={projectName} />;
+      case "xp":      return user ? (
+        <GamificationPanel userId={user.id} projectId={pid} userRole={userRole} />
+      ) : null;
+      default:        return <Dashboard projectId={pid} />;
     }
   };
 
   return (
     <div className="min-h-screen bg-background relative">
+      {/* ── Офлайн-статус ── */}
+      <OfflineBar projectId={pid} />
+
+      {/* ── Шапка ── */}
       <TopBar
         projectName={projectName}
         projectId={pid}
-        onBackToProjects={() => setScreen("projects")}
+        onBackToProjects={() => setScreen(isDirector ? "director" : "projects")}
+        extraActions={[
+          {
+            icon: "📄",
+            label: "Отчёт",
+            onClick: () => setActiveTab("report"),
+          },
+          {
+            icon: "🏆",
+            label: "XP",
+            onClick: () => setActiveTab("xp"),
+          },
+        ]}
       />
-      <TabBar activeTab={activeTab} onTabChange={setActiveTab} showProjectCard userRoles={roles} />
-      {renderTab()}
-      <AIAssistant projectId={pid} projectName={projectName} userRole={roles[0]} />
+
+      {/* ── Таббар ── */}
+      <TabBar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        showProjectCard
+        userRoles={roles}
+        extraTabs={
+          isForeman
+            ? [{ id: "ai", label: "ИИ", icon: "🤖" }]
+            : []
+        }
+      />
+
+      {/* ── Контент ── */}
+      <div className="animate-fade-in">
+        {renderTab()}
+      </div>
+
+      {/* ── ИИ-ассистент (FAB) — только не для прораба, у него своя вкладка ── */}
+      {!isForeman && (
+        <AIAssistant projectId={pid} projectName={projectName} userRole={userRole} />
+      )}
+
+      {/* ── Нижний отступ ── */}
       <div className="h-[70px]" />
     </div>
   );
