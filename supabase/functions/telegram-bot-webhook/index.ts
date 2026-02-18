@@ -118,7 +118,69 @@ async function handleCommand(chatId: number, text: string) {
     return;
   }
 
-  await sendMessage(chatId, "❓ Неизвестная команда. Введите /help для списка команд.");
+  // Free-text message → AI assistant
+  await handleAIChat(chatId, text);
+}
+
+async function handleAIChat(chatId: number, userMessage: string) {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) {
+    await sendMessage(chatId, "⚠️ AI-ассистент временно недоступен.");
+    return;
+  }
+
+  // Find user context
+  const userId = await findUserByChatId(String(chatId));
+  let contextNote = "";
+  if (userId) {
+    const roles = await getUserRoles(userId);
+    if (roles.length > 0) contextNote = `\nРоль пользователя: ${roles.join(", ")}`;
+  }
+
+  try {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: [
+          {
+            role: "system",
+            content: `Ты — AI-ассистент строительной платформы STSphera. Отвечай кратко, по делу, на русском языке. Помогай с вопросами по фасадным работам, задачам, снабжению и документации.${contextNote}`,
+          },
+          { role: "user", content: userMessage },
+        ],
+        stream: false,
+      }),
+    });
+
+    if (response.status === 429) {
+      await sendMessage(chatId, "⏳ Слишком много запросов. Попробуйте через минуту.");
+      return;
+    }
+    if (response.status === 402) {
+      await sendMessage(chatId, "⚠️ Лимит AI-запросов исчерпан.");
+      return;
+    }
+    if (!response.ok) {
+      await sendMessage(chatId, "⚠️ Ошибка AI. Попробуйте позже.");
+      return;
+    }
+
+    const data = await response.json();
+    const reply = data.choices?.[0]?.message?.content;
+    if (reply) {
+      await sendMessage(chatId, reply);
+    } else {
+      await sendMessage(chatId, "🤔 Не удалось получить ответ. Попробуйте переформулировать.");
+    }
+  } catch (err) {
+    console.error("AI chat error:", err);
+    await sendMessage(chatId, "⚠️ Ошибка при обращении к AI.");
+  }
 }
 
 async function handleCallbackQuery(callbackQuery: {
