@@ -147,6 +147,27 @@ export type Database = {
           },
         ]
       }
+      bot_states: {
+        Row: {
+          chat_id: string
+          data: Json | null
+          state: string
+          updated_at: string | null
+        }
+        Insert: {
+          chat_id: string
+          data?: Json | null
+          state: string
+          updated_at?: string | null
+        }
+        Update: {
+          chat_id?: string
+          data?: Json | null
+          state?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       crews: {
         Row: {
           created_at: string
