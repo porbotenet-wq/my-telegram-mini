@@ -1049,6 +1049,44 @@ export type Database = {
         }
         Relationships: []
       }
+      user_xp: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          project_id: string | null
+          user_id: string
+          xp: number
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          project_id?: string | null
+          user_id: string
+          xp?: number
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          project_id?: string | null
+          user_id?: string
+          xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_xp_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       work_types: {
         Row: {
           created_at: string
