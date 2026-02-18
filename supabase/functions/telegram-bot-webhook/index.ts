@@ -1,127 +1,63 @@
+import { sendMessage, editMessage, answerCallback, parseCallback } from "../_shared/botUtils.ts";
+import {
+  homeScreen,
+  projectListScreen,
+  projectDetailScreen,
+  alertsListScreen,
+  alertDetailScreen,
+  settingsScreen,
+} from "../_shared/botScreens.ts";
+import { getSession, setState, resetSession, STEP_PROMPTS } from "../_shared/botFSM.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const supabase = createClient(supabaseUrl, supabaseKey);
+const WEBAPP_URL = Deno.env.get("WEBAPP_URL") || "https://your-app.lovable.app";
 
-async function sendMessage(chatId: string | number, text: string, replyMarkup?: unknown) {
-  const body: Record<string, unknown> = {
-    chat_id: chatId,
-    text,
-    parse_mode: "HTML",
-    disable_web_page_preview: true,
-  };
-  if (replyMarkup) body.reply_markup = replyMarkup;
-
-  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-}
-
-async function answerCallbackQuery(callbackQueryId: string, text: string) {
-  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ callback_query_id: callbackQueryId, text, show_alert: false }),
-  });
-}
-
+// ─── Helpers ─────────────────────────────────────────
 async function findUserByChatId(chatId: string): Promise<string | null> {
-  const { data } = await supabase.from("profiles").select("user_id").eq("telegram_chat_id", chatId).single();
+  const { data } = await supabase
+    .from("profiles")
+    .select("user_id")
+    .eq("telegram_chat_id", chatId)
+    .single();
   return data?.user_id ?? null;
 }
 
 async function getUserRoles(userId: string): Promise<string[]> {
-  const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+  const { data } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId);
   return (data || []).map((r: { role: string }) => r.role);
 }
 
+async function getAlertsCount(): Promise<number> {
+  const { count } = await supabase
+    .from("alerts")
+    .select("id", { count: "exact", head: true })
+    .eq("is_resolved", false);
+  return count || 0;
+}
+
+function getWeekNumber(d: Date): number {
+  const start = new Date(d.getFullYear(), 0, 1);
+  const diff = d.getTime() - start.getTime();
+  return Math.ceil((diff / 86400000 + start.getDay() + 1) / 7);
+}
+
 function statusLabel(s: string) {
-  return ({
-    "Ожидание": "⏳ Ожидание",
-    "В работе": "🔧 В работе",
-    "Готово": "✅ Готово",
-  } as Record<string, string>)[s] ?? s;
+  return (
+    ({
+      Ожидание: "⏳ Ожидание",
+      "В работе": "🔧 В работе",
+      Готово: "✅ Готово",
+    } as Record<string, string>)[s] ?? s
+  );
 }
 
-async function handleCommand(chatId: number, text: string) {
-  const cmd = text.trim().toLowerCase();
-
-  if (cmd === "/start") {
-    await sendMessage(chatId, [
-      `👷 <b>STSphera Bot</b>`,
-      ``,
-      `Я помогу вам управлять задачами прямо из Telegram!`,
-      ``,
-      `<b>Команды:</b>`,
-      `/myid — Узнать ваш Chat ID`,
-      `/tasks — Мои открытые задачи`,
-      `/help — Справка по командам`,
-    ].join("\n"));
-    return;
-  }
-
-  if (cmd === "/myid") {
-    await sendMessage(chatId, `🆔 Ваш Chat ID: <code>${chatId}</code>\n\nСкопируйте и вставьте в настройки профиля STSphera.`);
-    return;
-  }
-
-  if (cmd === "/help") {
-    await sendMessage(chatId, [
-      `📚 <b>Справка STSphera Bot</b>`,
-      ``,
-      `/myid — Узнать Chat ID для привязки`,
-      `/tasks — Список ваших открытых задач`,
-      `/start — Приветственное сообщение`,
-      ``,
-      `Также вы можете менять статус задач через кнопки в уведомлениях.`,
-    ].join("\n"));
-    return;
-  }
-
-  if (cmd === "/tasks") {
-    const userId = await findUserByChatId(String(chatId));
-    if (!userId) {
-      await sendMessage(chatId, "⚠️ Ваш аккаунт не привязан. Укажите Chat ID в настройках профиля STSphera.");
-      return;
-    }
-
-    const roles = await getUserRoles(userId);
-
-    // Get tasks assigned directly or by role's department
-    const { data: tasks } = await supabase
-      .from("ecosystem_tasks")
-      .select("id, code, name, status, department, planned_date, priority")
-      .or(`assigned_to.eq.${userId}`)
-      .in("status", ["Ожидание", "В работе"])
-      .order("planned_date", { ascending: true, nullsFirst: false })
-      .limit(15);
-
-    if (!tasks || tasks.length === 0) {
-      await sendMessage(chatId, "✨ У вас нет открытых задач!");
-      return;
-    }
-
-    const lines = tasks.map((t, i) => {
-      const deadline = t.planned_date ? ` · 📅 ${t.planned_date}` : "";
-      return `${i + 1}. <b>${t.code}</b> ${t.name}\n   ${statusLabel(t.status)}${deadline}`;
-    });
-
-    await sendMessage(chatId, [
-      `📋 <b>Ваши задачи (${tasks.length}):</b>`,
-      ``,
-      ...lines,
-    ].join("\n"));
-    return;
-  }
-
-  // Free-text message → AI assistant
-  await handleAIChat(chatId, text);
-}
-
+// ─── AI Chat ─────────────────────────────────────────
 async function handleAIChat(chatId: number, userMessage: string) {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) {
@@ -129,40 +65,38 @@ async function handleAIChat(chatId: number, userMessage: string) {
     return;
   }
 
-  // Find user context
   const userId = await findUserByChatId(String(chatId));
   let contextNote = "";
   if (userId) {
     const roles = await getUserRoles(userId);
-    if (roles.length > 0) contextNote = `\nРоль пользователя: ${roles.join(", ")}`;
+    if (roles.length > 0) contextNote = `\nРоль: ${roles.join(", ")}`;
   }
 
   try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          {
-            role: "system",
-            content: `Ты — AI-ассистент строительной платформы STSphera. Отвечай кратко, по делу, на русском языке. Помогай с вопросами по фасадным работам, задачам, снабжению и документации.${contextNote}`,
-          },
-          { role: "user", content: userMessage },
-        ],
-        stream: false,
-      }),
-    });
+    const response = await fetch(
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: [
+            {
+              role: "system",
+              content: `Ты — AI-ассистент строительной платформы STSphera. Отвечай кратко, по делу, на русском.${contextNote}`,
+            },
+            { role: "user", content: userMessage },
+          ],
+          stream: false,
+        }),
+      }
+    );
 
     if (response.status === 429) {
       await sendMessage(chatId, "⏳ Слишком много запросов. Попробуйте через минуту.");
-      return;
-    }
-    if (response.status === 402) {
-      await sendMessage(chatId, "⚠️ Лимит AI-запросов исчерпан.");
       return;
     }
     if (!response.ok) {
@@ -172,109 +106,377 @@ async function handleAIChat(chatId: number, userMessage: string) {
 
     const data = await response.json();
     const reply = data.choices?.[0]?.message?.content;
-    if (reply) {
-      await sendMessage(chatId, reply);
-    } else {
-      await sendMessage(chatId, "🤔 Не удалось получить ответ. Попробуйте переформулировать.");
-    }
+    await sendMessage(chatId, reply || "🤔 Не удалось получить ответ.");
   } catch (err) {
     console.error("AI chat error:", err);
     await sendMessage(chatId, "⚠️ Ошибка при обращении к AI.");
   }
 }
 
-async function handleCallbackQuery(callbackQuery: {
-  id: string;
-  from: { id: number };
-  data?: string;
-}) {
-  const cbData = callbackQuery.data;
-  if (!cbData) return;
+// ─── CALLBACK QUERY handler ─────────────────────────
+async function handleCallback(cb: any) {
+  const chatId = cb.message.chat.id;
+  const msgId = cb.message.message_id;
+  const { action, entity, id, extra } = parseCallback(cb.data || "");
 
-  const chatId = callbackQuery.from.id;
-  const userId = await findUserByChatId(String(chatId));
+  await answerCallback(cb.id);
 
-  if (!userId) {
-    await answerCallbackQuery(callbackQuery.id, "⚠️ Аккаунт не привязан");
+  // HOME
+  if (action === "home") {
+    const alertsCount = await getAlertsCount();
+    const screen = homeScreen(cb.from.first_name, "user", alertsCount);
+    await editMessage(chatId, msgId, screen.text, { reply_markup: screen.keyboard });
+    await resetSession(chatId);
     return;
   }
 
-  // Parse callback: task_start:<taskId> or task_done:<taskId>
-  const [action, taskId] = cbData.split(":");
-  if (!taskId) {
-    await answerCallbackQuery(callbackQuery.id, "❌ Ошибка данных");
+  // PROJECT LIST
+  if (action === "list" && entity === "projects") {
+    const page = parseInt(id || "0", 10);
+    const screen = await projectListScreen(chatId, page);
+    await editMessage(chatId, msgId, screen.text, { reply_markup: screen.keyboard });
     return;
   }
 
-  let newStatus: string;
-  let emoji: string;
-  if (action === "task_start") {
-    newStatus = "В работе";
-    emoji = "🔧";
-  } else if (action === "task_done") {
-    newStatus = "Готово";
-    emoji = "✅";
-  } else {
-    await answerCallbackQuery(callbackQuery.id, "❌ Неизвестное действие");
+  // PROJECT DETAIL
+  if (action === "show" && entity === "project" && id) {
+    const screen = await projectDetailScreen(id);
+    await editMessage(chatId, msgId, screen.text, { reply_markup: screen.keyboard });
     return;
   }
 
-  // Verify task exists and user has access
-  const { data: task } = await supabase
-    .from("ecosystem_tasks")
-    .select("id, code, name, assigned_to, status")
-    .eq("id", taskId)
-    .single();
-
-  if (!task) {
-    await answerCallbackQuery(callbackQuery.id, "❌ Задача не найдена");
+  // ALERTS LIST
+  if (action === "list" && entity === "alerts") {
+    const screen = await alertsListScreen(id || undefined);
+    await editMessage(chatId, msgId, screen.text, { reply_markup: screen.keyboard });
     return;
   }
 
-  // Check permissions: assigned user, or pm/director
-  const roles = await getUserRoles(userId);
-  const canUpdate = task.assigned_to === userId || roles.includes("pm") || roles.includes("director");
-
-  if (!canUpdate) {
-    await answerCallbackQuery(callbackQuery.id, "⛔ Нет прав на изменение этой задачи");
+  // ALERT DETAIL
+  if (action === "alert" && entity === "detail" && id) {
+    const screen = await alertDetailScreen(id);
+    await editMessage(chatId, msgId, screen.text, { reply_markup: screen.keyboard });
     return;
   }
 
-  // Update status
-  const { error } = await supabase
-    .from("ecosystem_tasks")
-    .update({ status: newStatus, updated_at: new Date().toISOString() })
-    .eq("id", taskId);
-
-  if (error) {
-    await answerCallbackQuery(callbackQuery.id, "❌ Ошибка обновления");
+  // ALERT RESOLVE
+  if (action === "alert" && entity === "resolve" && id) {
+    await supabase
+      .from("alerts")
+      .update({ is_resolved: true, resolved_at: new Date().toISOString() })
+      .eq("id", id);
+    await editMessage(chatId, msgId, "✅ Алерт закрыт!", {
+      reply_markup: { inline_keyboard: [[{ text: "◀️ К алертам", callback_data: "list:alerts" }]] },
+    });
     return;
   }
 
-  await answerCallbackQuery(callbackQuery.id, `${emoji} Статус: ${newStatus}`);
-  await sendMessage(chatId, `${emoji} Задача <b>${task.code}</b> · ${task.name}\nСтатус изменён: <b>${newStatus}</b>`);
+  // TASKS LIST
+  if (action === "list" && entity === "tasks") {
+    const userId = await findUserByChatId(String(chatId));
+    if (!userId) {
+      await editMessage(chatId, msgId, "⚠️ Аккаунт не привязан. Используйте /myid.");
+      return;
+    }
+    const { data: tasks } = await supabase
+      .from("ecosystem_tasks")
+      .select("id, code, name, status, planned_date")
+      .or(`assigned_to.eq.${userId}`)
+      .in("status", ["Ожидание", "В работе"])
+      .order("planned_date", { ascending: true, nullsFirst: false })
+      .limit(10);
+
+    if (!tasks || tasks.length === 0) {
+      await editMessage(chatId, msgId, "✨ Нет открытых задач!", {
+        reply_markup: { inline_keyboard: [[{ text: "🏠 Домой", callback_data: "home" }]] },
+      });
+      return;
+    }
+
+    const lines = tasks.map((t: any, i: number) => {
+      const dl = t.planned_date ? ` · 📅 ${t.planned_date}` : "";
+      return `${i + 1}. <b>${t.code}</b> ${t.name}\n   ${statusLabel(t.status)}${dl}`;
+    });
+
+    const buttons = tasks.map((t: any) => [
+      { text: `🔧 ${t.code}`, callback_data: `task_start:${t.id}` },
+      { text: `✅ ${t.code}`, callback_data: `task_done:${t.id}` },
+    ]);
+    buttons.push([{ text: "🏠 Домой", callback_data: "home" }]);
+
+    await editMessage(chatId, msgId, `📋 <b>Задачи (${tasks.length}):</b>\n\n${lines.join("\n")}`, {
+      reply_markup: { inline_keyboard: buttons },
+    });
+    return;
+  }
+
+  // TASK STATUS CHANGE
+  if (action === "task_start" || action === "task_done") {
+    const taskId = entity; // callback format: task_start:<taskId>
+    // Re-parse: cb.data = "task_start:uuid" or "task_done:uuid"
+    const parts = (cb.data || "").split(":");
+    const tId = parts[1];
+    if (!tId) return;
+
+    const userId = await findUserByChatId(String(chatId));
+    if (!userId) return;
+
+    const newStatus = action === "task_start" ? "В работе" : "Готово";
+    const emoji = action === "task_start" ? "🔧" : "✅";
+
+    const { data: task } = await supabase
+      .from("ecosystem_tasks")
+      .select("id, code, name")
+      .eq("id", tId)
+      .single();
+
+    if (!task) return;
+
+    await supabase
+      .from("ecosystem_tasks")
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq("id", tId);
+
+    await editMessage(
+      chatId,
+      msgId,
+      `${emoji} <b>${task.code}</b> · ${task.name}\nСтатус: <b>${newStatus}</b>`,
+      { reply_markup: { inline_keyboard: [[{ text: "📋 Задачи", callback_data: "list:tasks" }, { text: "🏠 Домой", callback_data: "home" }]] } }
+    );
+    return;
+  }
+
+  // REPORT START — select project
+  if (action === "report" && entity === "start") {
+    if (id) {
+      const { data: p } = await supabase.from("projects").select("name").eq("id", id).single();
+      await setState(chatId, "report:select_zone", { project_id: id, project_name: p?.name });
+
+      const { data: zones } = await supabase
+        .from("work_types")
+        .select("id, section")
+        .eq("project_id", id);
+
+      const sections = [...new Set((zones || []).map((z: any) => z.section))];
+      const buttons = sections.slice(0, 5).map((s) => [{ text: s, callback_data: `zone:select:${s}` }]);
+      buttons.push([{ text: "◀️ Назад", callback_data: `show:project:${id}` }]);
+
+      await editMessage(chatId, msgId, `📝 Отчёт: <b>${p?.name}</b>\n\nВыберите участок:`, {
+        reply_markup: { inline_keyboard: buttons },
+      });
+    } else {
+      await setState(chatId, "report:select_project");
+      const screen = await projectListScreen(chatId);
+      await editMessage(chatId, msgId, "📝 <b>Дневной отчёт</b>\n\nВыберите проект:", {
+        reply_markup: screen.keyboard,
+      });
+    }
+    return;
+  }
+
+  // REPORT: select project for report
+  if (action === "select" && entity === "report") {
+    await setState(chatId, "report:select_project");
+    const screen = await projectListScreen(chatId);
+    await editMessage(chatId, msgId, "📝 <b>Дневной отчёт</b>\n\nВыберите проект:", {
+      reply_markup: screen.keyboard,
+    });
+    return;
+  }
+
+  // ZONE SELECT
+  if (action === "zone" && entity === "select" && id) {
+    await setState(chatId, "report:works", { zone_name: id });
+    await editMessage(chatId, msgId, STEP_PROMPTS["report:works"]);
+    return;
+  }
+
+  // REPORT CONFIRM
+  if (action === "report" && entity === "confirm") {
+    const session = await getSession(chatId);
+    const ctx = session.context;
+
+    await supabase.from("plan_fact").insert({
+      project_id: ctx.project_id,
+      date: new Date().toISOString().split("T")[0],
+      week_number: getWeekNumber(new Date()),
+      plan_value: 0,
+      fact_value: parseFloat(ctx.volume || "0") || 0,
+    });
+
+    await editMessage(
+      chatId,
+      msgId,
+      `✅ <b>Отчёт отправлен!</b>\n\n` +
+        `📋 ${ctx.project_name}\n📍 ${ctx.zone_name}\n` +
+        `🔨 ${ctx.works}\n📏 ${ctx.volume}\n` +
+        `👷 ${ctx.workers} чел.\n⚠️ ${ctx.issues || "Нет проблем"}`,
+      { reply_markup: { inline_keyboard: [[{ text: "🏠 Домой", callback_data: "home" }]] } }
+    );
+    await resetSession(chatId);
+    return;
+  }
+
+  // REPORT CANCEL
+  if (action === "report" && entity === "cancel") {
+    await resetSession(chatId);
+    const alertsCount = await getAlertsCount();
+    const screen = homeScreen(cb.from.first_name, "user", alertsCount);
+    await editMessage(chatId, msgId, screen.text, { reply_markup: screen.keyboard });
+    return;
+  }
+
+  // SETTINGS
+  if (action === "show" && entity === "settings") {
+    const screen = settingsScreen(cb.from.first_name);
+    await editMessage(chatId, msgId, screen.text, { reply_markup: screen.keyboard });
+    return;
+  }
 }
 
-Deno.serve(async (req) => {
-  console.log(`[webhook] ${req.method} received`);
+// ─── TEXT MESSAGE handler ────────────────────────────
+async function handleTextMessage(msg: any) {
+  const chatId = msg.chat.id;
+  const text = (msg.text || "").trim();
 
+  // /start with deep link
+  if (text === "/start" || text.startsWith("/start ")) {
+    const param = text.split(" ")[1];
+    if (param?.startsWith("project_")) {
+      const projectId = param.replace("project_", "");
+      const screen = await projectDetailScreen(projectId);
+      await sendMessage(chatId, screen.text, { reply_markup: screen.keyboard });
+      return;
+    }
+
+    // Register/update profile
+    const fullName = msg.from.first_name + (msg.from.last_name ? ` ${msg.from.last_name}` : "");
+    await supabase.from("profiles").upsert(
+      { telegram_chat_id: String(chatId), display_name: fullName },
+      { onConflict: "telegram_chat_id" }
+    );
+
+    const alertsCount = await getAlertsCount();
+    const screen = homeScreen(msg.from.first_name, "user", alertsCount);
+    await sendMessage(chatId, screen.text, { reply_markup: screen.keyboard });
+    await resetSession(chatId);
+    return;
+  }
+
+  if (text === "/myid") {
+    await sendMessage(chatId, `🆔 Ваш Chat ID: <code>${chatId}</code>\n\nСкопируйте в настройки профиля STSphera.`);
+    return;
+  }
+
+  if (text === "/tasks") {
+    const userId = await findUserByChatId(String(chatId));
+    if (!userId) {
+      await sendMessage(chatId, "⚠️ Аккаунт не привязан. Укажите Chat ID в настройках.");
+      return;
+    }
+    const { data: tasks } = await supabase
+      .from("ecosystem_tasks")
+      .select("id, code, name, status, planned_date")
+      .or(`assigned_to.eq.${userId}`)
+      .in("status", ["Ожидание", "В работе"])
+      .order("planned_date", { ascending: true, nullsFirst: false })
+      .limit(15);
+
+    if (!tasks || tasks.length === 0) {
+      await sendMessage(chatId, "✨ У вас нет открытых задач!");
+      return;
+    }
+    const lines = tasks.map((t: any, i: number) => {
+      const dl = t.planned_date ? ` · 📅 ${t.planned_date}` : "";
+      return `${i + 1}. <b>${t.code}</b> ${t.name}\n   ${statusLabel(t.status)}${dl}`;
+    });
+    await sendMessage(chatId, `📋 <b>Задачи (${tasks.length}):</b>\n\n${lines.join("\n")}`);
+    return;
+  }
+
+  if (text === "/help") {
+    await sendMessage(chatId, [
+      `📚 <b>Справка STSphera Bot</b>`,
+      ``,
+      `/start — Главное меню`,
+      `/myid — Узнать Chat ID`,
+      `/tasks — Мои задачи`,
+      `/help — Эта справка`,
+      ``,
+      `Или просто напишите вопрос — AI-ассистент ответит.`,
+    ].join("\n"));
+    return;
+  }
+
+  // FSM: report flow
+  const session = await getSession(chatId);
+
+  if (session.state === "report:select_project") {
+    // User might have clicked a project button — handled in callback
+    await sendMessage(chatId, "👆 Выберите проект из списка выше.");
+    return;
+  }
+
+  if (session.state === "report:works") {
+    await setState(chatId, "report:volume", { works: text });
+    await sendMessage(chatId, STEP_PROMPTS["report:volume"]);
+    return;
+  }
+
+  if (session.state === "report:volume") {
+    await setState(chatId, "report:workers", { volume: text });
+    await sendMessage(chatId, STEP_PROMPTS["report:workers"]);
+    return;
+  }
+
+  if (session.state === "report:workers") {
+    await setState(chatId, "report:issues", { workers: text });
+    await sendMessage(chatId, STEP_PROMPTS["report:issues"]);
+    return;
+  }
+
+  if (session.state === "report:issues") {
+    const issues = text.toLowerCase() === "нет" ? null : text;
+    await setState(chatId, "report:confirm", { issues });
+
+    const ctx = (await getSession(chatId)).context;
+    const confirmText =
+      `📝 <b>Проверьте отчёт:</b>\n\n` +
+      `📋 ${ctx.project_name}\n📍 ${ctx.zone_name}\n` +
+      `🔨 ${ctx.works}\n📏 ${ctx.volume}\n` +
+      `👷 ${ctx.workers} чел.\n` +
+      `⚠️ ${issues || "Нет проблем"}\n\nВсё верно?`;
+
+    await sendMessage(chatId, confirmText, {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "✅ Отправить", callback_data: "report:confirm" }],
+          [{ text: "❌ Отменить", callback_data: "report:cancel" }],
+        ],
+      },
+    });
+    return;
+  }
+
+  // Default: AI chat for idle state
+  if (session.state === "idle") {
+    await handleAIChat(chatId, text);
+  }
+}
+
+// ─── MAIN SERVE ──────────────────────────────────────
+Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return new Response("OK", { status: 200 });
   }
 
   try {
-    const rawBody = await req.text();
-    console.log("[webhook] body:", rawBody.slice(0, 500));
-    const update = JSON.parse(rawBody);
+    const update = await req.json();
 
-    if (update.message?.text) {
-      console.log(`[webhook] message from chat ${update.message.chat.id}: ${update.message.text}`);
-      await handleCommand(update.message.chat.id, update.message.text);
-    } else if (update.callback_query) {
-      console.log(`[webhook] callback from ${update.callback_query.from.id}: ${update.callback_query.data}`);
-      await handleCallbackQuery(update.callback_query);
-    } else {
-      console.log("[webhook] unhandled update type:", Object.keys(update).join(", "));
+    if (update.callback_query) {
+      await handleCallback(update.callback_query);
+    } else if (update.message?.text) {
+      await handleTextMessage(update.message);
     }
 
     return new Response(JSON.stringify({ ok: true }), {
@@ -282,7 +484,7 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     console.error("[webhook] error:", err);
-    return new Response(JSON.stringify({ ok: false }), {
+    return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
