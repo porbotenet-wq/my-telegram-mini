@@ -24,6 +24,8 @@ const BASE_TABS = [
   { id: "gpr",    label: "📆 ГПР" },
   { id: "wflow",  label: "🔄 Процессы" },
   { id: "alerts", label: "🔔 Алерты" },
+  { id: "logs",   label: "📝 Отчёты" },
+  { id: "appr",   label: "✅ Согласования" },
   { id: "sheets", label: "📊 Sheets" },
   { id: "docs",   label: "📄 Документы" },
   { id: "cal",    label: "📅 Календарь" },

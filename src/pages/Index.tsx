@@ -29,6 +29,8 @@ const GamificationPanel = lazy(() => import("@/components/GamificationPanel"));
 const ForemenAI = lazy(() => import("@/components/ForemenAI"));
 const ReportPDF = lazy(() => import("@/components/ReportPDF"));
 const InstallPWA = lazy(() => import("@/components/InstallPWA"));
+const DailyLogs = lazy(() => import("@/components/DailyLogs"));
+const Approvals = lazy(() => import("@/components/Approvals"));
 
 // ── Типы ─────────────────────────────────────────────────
 type Screen = "projects" | "create" | "project" | "director";
@@ -165,6 +167,8 @@ const Index = () => {
       case "cal":     return <ProjectCalendar projectId={pid} />;
       case "gpr":     return <GPR projectId={pid} />;
       case "alerts":  return <Alerts projectId={pid} />;
+      case "logs":    return <DailyLogs projectId={pid} userRole={userRole} />;
+      case "appr":    return <Approvals projectId={pid} userRole={userRole} />;
       case "wflow":   return <Workflow />;
       case "sheets":  return <SheetsSync />;
       case "docs":    return <Documents projectId={pid} />;

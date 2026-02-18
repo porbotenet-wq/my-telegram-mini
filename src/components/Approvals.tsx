@@ -39,7 +39,7 @@ const Approvals = ({ projectId, userRole }: ApprovalsProps) => {
       setCommentingId(null);
       setComment("");
     } catch (e: unknown) {
-      toast.error(e.message);
+      toast.error(e instanceof Error ? e.message : "Ошибка");
     }
   };
 
