@@ -168,6 +168,59 @@ export type Database = {
         }
         Relationships: []
       }
+      calendar_events: {
+        Row: {
+          created_at: string
+          date: string
+          description: string | null
+          doc_type_1c: string | null
+          end_date: string | null
+          id: string
+          is_done: boolean
+          priority: string | null
+          project_id: string | null
+          ref_1c: string | null
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          description?: string | null
+          doc_type_1c?: string | null
+          end_date?: string | null
+          id?: string
+          is_done?: boolean
+          priority?: string | null
+          project_id?: string | null
+          ref_1c?: string | null
+          title: string
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          description?: string | null
+          doc_type_1c?: string | null
+          end_date?: string | null
+          id?: string
+          is_done?: boolean
+          priority?: string | null
+          project_id?: string | null
+          ref_1c?: string | null
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crews: {
         Row: {
           created_at: string
