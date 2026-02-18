@@ -1,232 +1,211 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  sendMessage,
+  inlineKeyboard,
+  buildCallback,
+} from "../_shared/botUtils.ts";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
-const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Role → department mapping for task routing
-const ROLE_DEPARTMENTS: Record<string, string[]> = {
-  director: [],      // gets everything
-  pm: [],            // gets everything
-  project: ["Проектный"],
-  supply: ["Снабжение"],
-  production: ["Производство"],
-  foreman1: ["Производство"],
-  foreman2: ["Производство"],
-  foreman3: ["Производство"],
-  pto: ["ПТО"],
-  inspector: ["Контроль"],
-};
+// ── Types ────────────────────────────────────────────────────────────
 
-type NotifyEvent =
-  | "alert_created" | "alert_overdue" | "stage_overdue"
-  | "xp_level_up" | "daily_report_missing" | "ks2_due_soon"
-  | "supply_overdue" | "project_summary"
-  | "task_assigned" | "task_deadline_soon" | "task_overdue"
-  | "daily_digest";
+type NotifyType =
+  | "alert"
+  | "report_missing"
+  | "deadline"
+  | "approval"
+  | "custom";
 
 interface NotifyPayload {
-  event: NotifyEvent;
-  projectId?: string;
-  userId?: string;
-  targetRole?: string;
-  taskId?: string;
-  data?: Record<string, unknown>;
+  type: NotifyType;
+  project_id: string;
+  title: string;
+  body: string;
+  target_chat_ids?: (number | string)[];
+  target_role?: string;
+  entity_id?: string;
 }
 
-interface SendMessageOptions {
-  chatId: string;
-  text: string;
-  replyMarkup?: unknown;
-}
+// ── Icon map ─────────────────────────────────────────────────────────
 
-async function sendMessage({ chatId, text, replyMarkup }: SendMessageOptions) {
-  const body: Record<string, unknown> = {
-    chat_id: chatId,
-    text,
-    parse_mode: "HTML",
-    disable_web_page_preview: true,
-  };
-  if (replyMarkup) body.reply_markup = replyMarkup;
+const ICON: Record<NotifyType, string> = {
+  alert: "🚨",
+  report_missing: "📵",
+  deadline: "⏰",
+  approval: "✅",
+  custom: "📢",
+};
 
-  const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return res.json();
-}
+// ── Resolve recipients ───────────────────────────────────────────────
 
-function priorityLabel(p: string) {
-  return ({ critical: "🔴 КРИТИЧНО", high: "🟠 Высокий", medium: "🟡 Средний", low: "🟢 Низкий" } as Record<string, string>)[p] ?? p;
-}
-
-function statusLabel(s: string) {
-  return ({
-    "Ожидание": "⏳ Ожидание",
-    "В работе": "🔧 В работе",
-    "Готово": "✅ Готово",
-    "Отклонено": "❌ Отклонено",
-  } as Record<string, string>)[s] ?? s;
-}
-
-function formatMessage(event: NotifyEvent, data: Record<string, unknown>): string {
-  const p = data.projectName ? `<b>📍 ${data.projectName}</b>\n` : "";
-  switch (event) {
-    case "alert_created":
-      return `🚨 ${p}<b>Новый алерт!</b>\n${data.alertTitle}\nПриоритет: ${priorityLabel(String(data.priority))}`;
-    case "alert_overdue":
-      return `🔴 ${p}<b>Алерт просрочен!</b>\n${data.alertTitle}\nПросрочка: <b>${data.hoursOverdue} ч.</b>`;
-    case "stage_overdue":
-      return `⚠️ ${p}<b>Этап просрочен!</b>\n${data.stageName}\nПросрочка: <b>${data.daysOverdue} дн.</b>`;
-    case "xp_level_up":
-      return `🎉 Поздравляю, <b>${data.userName}</b>!\nУровень <b>${data.level} · ${data.levelTitle}</b> 🏆`;
-    case "daily_report_missing":
-      return `📵 ${p}<b>Нет ежедневного отчёта!</b>\n${data.userName}, внесите данные до 20:00`;
-    case "ks2_due_soon":
-      return `📋 ${p}<b>Не забудьте КС-2!</b>\nОсталось <b>${data.daysLeft} дн.</b>`;
-    case "supply_overdue":
-      return `🚛 ${p}<b>Поставка просрочена!</b>\n${data.materialName}`;
-    case "task_assigned":
-      return [
-        `📋 ${p}<b>Новая задача назначена!</b>`,
-        ``,
-        `<b>${data.taskCode}</b> · ${data.taskName}`,
-        `📂 ${data.department} → ${data.block}`,
-        data.plannedDate ? `📅 Срок: <b>${data.plannedDate}</b>` : "",
-        data.priority ? `Приоритет: ${priorityLabel(String(data.priority))}` : "",
-      ].filter(Boolean).join("\n");
-    case "task_deadline_soon":
-      return [
-        `⏰ ${p}<b>Приближается дедлайн!</b>`,
-        ``,
-        `<b>${data.taskCode}</b> · ${data.taskName}`,
-        `📅 Срок: <b>${data.plannedDate}</b> (осталось <b>${data.daysLeft} дн.</b>)`,
-        `Статус: ${statusLabel(String(data.status))}`,
-      ].join("\n");
-    case "task_overdue":
-      return [
-        `🔴 ${p}<b>Задача просрочена!</b>`,
-        ``,
-        `<b>${data.taskCode}</b> · ${data.taskName}`,
-        `📅 Срок был: <b>${data.plannedDate}</b> (просрочка <b>${data.daysOverdue} дн.</b>)`,
-      ].join("\n");
-    case "daily_digest":
-      return String(data.digestText || "📋 Нет задач на сегодня");
-    case "project_summary":
-      return [
-        `📊 <b>Еженедельная сводка</b>`, `<b>📍 ${data.projectName}</b>`, ``,
-        `📈 Прогресс: <b>${data.progress}%</b>`,
-        `✅ Этапов закрыто: <b>${data.stagesClosed}</b>`,
-        `🚨 Открытых алертов: <b>${data.openAlerts}</b>`,
-        `🔴 Критических: <b>${data.criticalAlerts}</b>`,
-        `📄 Документов: <b>${data.docsUploaded}</b>`,
-        Number(data.criticalAlerts) > 0 ? `\n🔴 Требует внимания!` : `\n✨ Без критических инцидентов!`
-      ].join("\n");
-    default:
-      return `📱 STSphera: событие`;
-  }
-}
-
-function buildTaskKeyboard(taskId: string) {
-  return {
-    inline_keyboard: [
-      [
-        { text: "🔧 Начать", callback_data: `task_start:${taskId}` },
-        { text: "✅ Готово", callback_data: `task_done:${taskId}` },
-      ],
-    ],
-  };
-}
-
-async function getUserChatId(userId: string) {
-  const { data } = await supabase.from("profiles").select("telegram_chat_id").eq("user_id", userId).single();
-  return data?.telegram_chat_id ?? null;
-}
-
-async function resolveRecipients(event: NotifyEvent, userId?: string, targetRole?: string, taskId?: string): Promise<string[]> {
-  // Direct user
-  if (userId) return [userId];
-
-  // Task-based: notify assigned user + managers
-  if (taskId && ["task_assigned", "task_deadline_soon", "task_overdue"].includes(event)) {
-    const { data: task } = await supabase.from("ecosystem_tasks").select("assigned_to, responsible, department").eq("id", taskId).single();
-    const recipients = new Set<string>();
-
-    if (task?.assigned_to) recipients.add(task.assigned_to);
-
-    // Also notify users whose role matches the department
-    for (const [role, depts] of Object.entries(ROLE_DEPARTMENTS)) {
-      if (depts.length === 0 || depts.includes(task?.department ?? "")) {
-        if (["director", "pm"].includes(role) && event === "task_overdue") {
-          const { data: roleUsers } = await supabase.from("user_roles").select("user_id").eq("role", role);
-          (roleUsers || []).forEach((r: { user_id: string }) => recipients.add(r.user_id));
-        }
-      }
-    }
-
-    return [...recipients];
+async function resolveChatIds(
+  targetChatIds?: (number | string)[],
+  targetRole?: string,
+): Promise<(number | string)[]> {
+  // Direct chat ids take priority
+  if (targetChatIds && targetChatIds.length > 0) {
+    return targetChatIds;
   }
 
-  // Role-based
+  // Fallback: look up by role in profiles
   if (targetRole) {
-    const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", targetRole);
-    const recipients = (roles || []).map((r: { user_id: string }) => r.user_id);
-    if (["alert_overdue", "stage_overdue", "alert_created", "task_overdue"].includes(event)) {
-      const { data: mgrs } = await supabase.from("user_roles").select("user_id").in("role", ["director", "pm"]);
-      return [...new Set([...recipients, ...(mgrs || []).map((r: { user_id: string }) => r.user_id)])];
-    }
-    return recipients;
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("telegram_chat_id")
+      .eq("role", targetRole)
+      .not("telegram_chat_id", "is", null);
+
+    if (error || !data) return [];
+    return data
+      .map((p: { telegram_chat_id: number | string | null }) => p.telegram_chat_id)
+      .filter(Boolean) as (number | string)[];
   }
 
   return [];
 }
+
+// ── Build message text ───────────────────────────────────────────────
+
+function buildText(type: NotifyType, title: string, body: string): string {
+  const icon = ICON[type];
+  return `${icon} <b>${title}</b>\n\n${body}`;
+}
+
+// ── Build inline buttons per type ────────────────────────────────────
+
+function buildButtons(type: NotifyType, entityId?: string) {
+  const eid = entityId ?? "0";
+
+  switch (type) {
+    case "alert":
+      return inlineKeyboard([
+        [
+          { text: "🔍 Подробнее", callback_data: buildCallback("view", "alert", eid) },
+          { text: "❌ Закрыть", callback_data: buildCallback("close", "alert", eid) },
+        ],
+      ]);
+
+    case "report_missing":
+      return inlineKeyboard([
+        [
+          { text: "📝 Заполнить отчёт", callback_data: buildCallback("fill", "report", eid) },
+        ],
+      ]);
+
+    case "deadline":
+      return inlineKeyboard([
+        [
+          { text: "🔍 Подробнее", callback_data: buildCallback("view", "task", eid) },
+          { text: "✅ Выполнено", callback_data: buildCallback("done", "task", eid) },
+        ],
+      ]);
+
+    case "approval":
+      return inlineKeyboard([
+        [
+          { text: "👍 Согласовать", callback_data: buildCallback("approve", "doc", eid) },
+          { text: "👎 Отклонить", callback_data: buildCallback("reject", "doc", eid) },
+        ],
+        [
+          { text: "🔍 Подробнее", callback_data: buildCallback("view", "doc", eid) },
+        ],
+      ]);
+
+    case "custom":
+      return entityId
+        ? inlineKeyboard([
+            [{ text: "🔍 Подробнее", callback_data: buildCallback("view", "item", eid) }],
+          ])
+        : undefined;
+
+    default:
+      return undefined;
+  }
+}
+
+// ── Main handler ─────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  if (req.method !== "POST") {
+    return new Response(
+      JSON.stringify({ error: "Method not allowed" }),
+      { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
   try {
-    const { event, projectId, userId, targetRole, taskId, data = {} }: NotifyPayload = await req.json();
-    const message = formatMessage(event, data);
-    const recipients = await resolveRecipients(event, userId, targetRole, taskId);
+    const payload: NotifyPayload = await req.json();
+    const { type, project_id, title, body, target_chat_ids, target_role, entity_id } = payload;
 
-    // Add inline keyboard for task assignments
-    const useKeyboard = event === "task_assigned" && taskId;
+    // 1. Resolve recipients
+    const chatIds = await resolveChatIds(target_chat_ids, target_role);
+    const total = chatIds.length;
 
-    const sent: string[] = [];
-    await Promise.allSettled(recipients.map(async (uid) => {
-      const chatId = await getUserChatId(uid);
-      if (!chatId) return;
-      const result = await sendMessage({
-        chatId,
-        text: message,
-        replyMarkup: useKeyboard ? buildTaskKeyboard(taskId!) : undefined,
-      });
-      if (result.ok) sent.push(uid);
-      await supabase.from("telegram_notification_log").insert({
-        user_id: uid,
-        project_id: projectId ?? null,
-        event_type: event,
-        success: result.ok,
-        message_preview: message.slice(0, 200),
-      });
-    }));
+    if (total === 0) {
+      return new Response(
+        JSON.stringify({ sent: 0, failed: 0, total: 0, note: "No recipients found" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
-    return new Response(JSON.stringify({ ok: true, sent: sent.length }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    // 2. Build message text and buttons
+    const text = buildText(type, title, body);
+    const replyMarkup = buildButtons(type, entity_id);
+
+    // 3. Send to all recipients
+    let sent = 0;
+    let failed = 0;
+
+    const results = await Promise.allSettled(
+      chatIds.map(async (chatId) => {
+        const res = await sendMessage(chatId, text, {
+          parse_mode: "HTML",
+          reply_markup: replyMarkup,
+        });
+        const json = await res.json();
+        return { chatId, ok: json.ok };
+      }),
+    );
+
+    for (const r of results) {
+      if (r.status === "fulfilled" && r.value.ok) {
+        sent++;
+      } else {
+        failed++;
+      }
+    }
+
+    // 4. Log notification
+    await supabase.from("telegram_notification_log").insert({
+      project_id,
+      event_type: type,
+      success: failed === 0,
+      message_preview: text.slice(0, 200),
+      recipients_total: total,
+      recipients_sent: sent,
+    }).then(() => {});
+
+    // 5. Return result
+    return new Response(
+      JSON.stringify({ sent, failed, total }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (err) {
-    return new Response(JSON.stringify({ ok: false, error: String(err) }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: String(err) }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   }
 });
