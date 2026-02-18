@@ -3,11 +3,10 @@ import { usePWA } from "@/hooks/usePWA";
 import { Download, X, Share } from "lucide-react";
 
 const InstallPWA = () => {
-  const { canInstall, isInstalled, isIOS, install } = usePWA();
-  const [dismissed, setDismissed] = useState(false);
+  const { canInstall, isInstalled, isIOS, promptInstall, dismissInstall, showBanner } = usePWA();
   const [showIOSGuide, setShowIOSGuide] = useState(false);
 
-  if (isInstalled || dismissed) return null;
+  if (isInstalled || !showBanner) return null;
 
   // iOS guide
   if (isIOS && showIOSGuide) {
@@ -36,8 +35,7 @@ const InstallPWA = () => {
     );
   }
 
-  // Show banner for iOS or Android
-  if (!canInstall && !isIOS) return null;
+  if (!canInstall) return null;
 
   return (
     <div className="fixed bottom-[76px] left-3 right-3 z-[100] bg-card border border-border rounded-xl p-3 shadow-lg flex items-center gap-3 animate-fade-in">
@@ -49,12 +47,12 @@ const InstallPWA = () => {
         <div className="text-[9px] text-muted-foreground">Работайте офлайн, быстрый доступ</div>
       </div>
       <button
-        onClick={() => (isIOS ? setShowIOSGuide(true) : install())}
+        onClick={() => (isIOS ? setShowIOSGuide(true) : promptInstall())}
         className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-[10px] font-bold flex-shrink-0"
       >
         {isIOS ? "Как?" : "Установить"}
       </button>
-      <button onClick={() => setDismissed(true)} className="text-muted-foreground flex-shrink-0">
+      <button onClick={dismissInstall} className="text-muted-foreground flex-shrink-0">
         <X size={14} />
       </button>
     </div>
