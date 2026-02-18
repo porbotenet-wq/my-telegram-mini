@@ -147,24 +147,66 @@ export type Database = {
           },
         ]
       }
-      bot_states: {
+      bot_audit_log: {
+        Row: {
+          action: string
+          chat_id: string
+          created_at: string
+          duration_ms: number | null
+          id: string
+          payload: Json | null
+          result: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          chat_id: string
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          payload?: Json | null
+          result?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          chat_id?: string
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          payload?: Json | null
+          result?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      bot_sessions: {
         Row: {
           chat_id: string
-          data: Json | null
+          context: Json
+          expires_at: string
+          message_id: number | null
           state: string
-          updated_at: string | null
+          updated_at: string
+          user_id: string | null
         }
         Insert: {
           chat_id: string
-          data?: Json | null
-          state: string
-          updated_at?: string | null
+          context?: Json
+          expires_at?: string
+          message_id?: number | null
+          state?: string
+          updated_at?: string
+          user_id?: string | null
         }
         Update: {
           chat_id?: string
-          data?: Json | null
+          context?: Json
+          expires_at?: string
+          message_id?: number | null
           state?: string
-          updated_at?: string | null
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
