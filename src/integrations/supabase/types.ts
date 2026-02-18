@@ -147,6 +147,65 @@ export type Database = {
           },
         ]
       }
+      approvals: {
+        Row: {
+          assigned_to: string | null
+          created_at: string | null
+          decided_at: string | null
+          decision_comment: string | null
+          description: string | null
+          entity_id: string | null
+          id: string
+          idempotency_key: string | null
+          level: number
+          project_id: string
+          requested_by: string | null
+          status: string
+          title: string
+          type: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string | null
+          decided_at?: string | null
+          decision_comment?: string | null
+          description?: string | null
+          entity_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          level?: number
+          project_id: string
+          requested_by?: string | null
+          status?: string
+          title: string
+          type: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string | null
+          decided_at?: string | null
+          decision_comment?: string | null
+          description?: string | null
+          entity_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          level?: number
+          project_id?: string
+          requested_by?: string | null
+          status?: string
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approvals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -352,6 +411,71 @@ export type Database = {
           },
           {
             foreignKeyName: "crews_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_logs: {
+        Row: {
+          created_at: string | null
+          date: string
+          id: string
+          issues_description: string | null
+          photo_urls: string[] | null
+          project_id: string
+          review_comment: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_by: string | null
+          updated_at: string | null
+          volume: string | null
+          weather: string | null
+          workers_count: number | null
+          works_description: string
+          zone_name: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date?: string
+          id?: string
+          issues_description?: string | null
+          photo_urls?: string[] | null
+          project_id: string
+          review_comment?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_by?: string | null
+          updated_at?: string | null
+          volume?: string | null
+          weather?: string | null
+          workers_count?: number | null
+          works_description: string
+          zone_name?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          id?: string
+          issues_description?: string | null
+          photo_urls?: string[] | null
+          project_id?: string
+          review_comment?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_by?: string | null
+          updated_at?: string | null
+          volume?: string | null
+          weather?: string | null
+          workers_count?: number | null
+          works_description?: string
+          zone_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_logs_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
