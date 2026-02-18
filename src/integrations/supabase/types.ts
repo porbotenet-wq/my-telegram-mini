@@ -147,6 +147,45 @@ export type Database = {
           },
         ]
       }
+      audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_role: string | null
+          correlation_id: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_role?: string | null
+          correlation_id?: string
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_role?: string | null
+          correlation_id?: string
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+        }
+        Relationships: []
+      }
       bot_audit_log: {
         Row: {
           action: string
@@ -1436,6 +1475,7 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: undefined
       }
+      user_project_ids: { Args: never; Returns: string[] }
     }
     Enums: {
       app_role:
