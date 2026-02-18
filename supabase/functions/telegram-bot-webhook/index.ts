@@ -256,26 +256,34 @@ async function handleCallbackQuery(callbackQuery: {
 }
 
 Deno.serve(async (req) => {
+  console.log(`[webhook] ${req.method} received`);
+
   if (req.method !== "POST") {
     return new Response("OK", { status: 200 });
   }
 
   try {
-    const update = await req.json();
+    const rawBody = await req.text();
+    console.log("[webhook] body:", rawBody.slice(0, 500));
+    const update = JSON.parse(rawBody);
 
     if (update.message?.text) {
+      console.log(`[webhook] message from chat ${update.message.chat.id}: ${update.message.text}`);
       await handleCommand(update.message.chat.id, update.message.text);
     } else if (update.callback_query) {
+      console.log(`[webhook] callback from ${update.callback_query.from.id}: ${update.callback_query.data}`);
       await handleCallbackQuery(update.callback_query);
+    } else {
+      console.log("[webhook] unhandled update type:", Object.keys(update).join(", "));
     }
 
     return new Response(JSON.stringify({ ok: true }), {
       headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("Webhook error:", err);
+    console.error("[webhook] error:", err);
     return new Response(JSON.stringify({ ok: false }), {
-      status: 200, // Return 200 to prevent Telegram retries
+      status: 200,
       headers: { "Content-Type": "application/json" },
     });
   }
