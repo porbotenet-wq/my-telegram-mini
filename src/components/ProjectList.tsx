@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import ProfileSettings from "@/components/ProfileSettings";
 
 interface Project {
   id: string;
@@ -36,6 +38,8 @@ interface ProjectListProps {
 const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { displayName, signOut } = useAuth();
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -58,13 +62,32 @@ const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
         <div className="flex items-center gap-2">
           <span className="text-[15px] font-bold tracking-tight">🏗️ Объекты</span>
         </div>
-        <button
-          onClick={onCreateNew}
-          className="px-3 py-1.5 rounded-sm bg-primary text-primary-foreground text-[11px] font-bold hover:brightness-110 transition-all"
-        >
-          + Новый объект
-        </button>
+        <div className="flex items-center gap-2">
+          {displayName && (
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="text-[10px] text-muted-foreground hover:text-primary transition-colors truncate max-w-[80px]"
+              title="Настройки профиля"
+            >
+              {displayName}
+            </button>
+          )}
+          <button
+            onClick={signOut}
+            className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
+            title="Выйти"
+          >
+            ⏻
+          </button>
+          <button
+            onClick={onCreateNew}
+            className="px-3 py-1.5 rounded-sm bg-primary text-primary-foreground text-[11px] font-bold hover:brightness-110 transition-all"
+          >
+            + Новый объект
+          </button>
+        </div>
       </div>
+      <ProfileSettings open={settingsOpen} onOpenChange={setSettingsOpen} />
 
       <div className="p-2.5">
         {loading ? (
