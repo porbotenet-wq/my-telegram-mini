@@ -17,6 +17,7 @@ import SheetsSync from "@/components/SheetsSync";
 import Documents from "@/components/Documents";
 import Workflow from "@/components/Workflow";
 import AIAssistant from "@/components/AIAssistant";
+import ProjectCalendar from "@/components/ProjectCalendar";
 
 // ── Новые модули ──────────────────────────────────────────
 import OfflineBar from "@/components/OfflineBar";
@@ -148,6 +149,7 @@ const Index = () => {
       case "pf":      return <PlanFact projectId={pid} />;
       case "crew":    return <Crew projectId={pid} />;
       case "sup":     return <Supply projectId={pid} />;
+      case "cal":     return <ProjectCalendar projectId={pid} />;
       case "gpr":     return <GPR projectId={pid} />;
       case "alerts":  return <Alerts projectId={pid} />;
       case "wflow":   return <Workflow />;
