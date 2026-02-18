@@ -14,9 +14,10 @@ interface PhotoUploadProps {
   folder: string;
   maxPhotos?: number;
   readOnly?: boolean;
+  onUploadComplete?: (count: number) => void;
 }
 
-const PhotoUpload = ({ photos, onPhotosChange, folder, maxPhotos = 10, readOnly = false }: PhotoUploadProps) => {
+const PhotoUpload = ({ photos, onPhotosChange, folder, maxPhotos = 10, readOnly = false, onUploadComplete }: PhotoUploadProps) => {
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -64,6 +65,7 @@ const PhotoUpload = ({ photos, onPhotosChange, folder, maxPhotos = 10, readOnly 
     if (newUrls.length > 0) {
       onPhotosChange([...photos, ...newUrls]);
       toast.success(`Загружено ${newUrls.length} фото`);
+      onUploadComplete?.(newUrls.length);
     }
     setUploading(false);
     if (fileRef.current) fileRef.current.value = "";
