@@ -57,7 +57,7 @@ export async function setState(
     .eq("telegram_id", telegramId)
     .single();
 
-  const merged = { ...(existing?.context || ), ...(context || {}) };
+  const merged = { ...(existing?.context || {}), ...(context || {}) };
 
   await supabase.from("bot_sessions").upsert({
     telegram_id: telegramId,
