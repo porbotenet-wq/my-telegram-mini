@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
-const MINI_APP_URL = Deno.env.get("MINI_APP_URL") || "https://your-app.lovable.app";
+const MINI_APP_URL = Deno.env.get("MINI_APP_URL") || "https://id-preview--fe942628-85b8-4407-a858-132ee496d745.lovable.app";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
