@@ -26,6 +26,7 @@ import ForemenAI from "@/components/ForemenAI";
 import ReportPDF from "@/components/ReportPDF";
 
 import { useOfflineCache } from "@/hooks/useOfflineCache";
+import InstallPWA from "@/components/InstallPWA";
 
 // ── Типы ─────────────────────────────────────────────────
 type Screen = "projects" | "create" | "project" | "director";
@@ -52,16 +53,6 @@ const Index = () => {
       cacheProjectData(selectedProjectId);
     }
   }, [selectedProjectId, screen]);
-
-  // ── Регистрируем Service Worker ──────────────────────────
-  useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .then(() => console.log("SW registered"))
-        .catch((e) => console.warn("SW registration failed:", e));
-    }
-  }, []);
 
   // ── Загрузка ─────────────────────────────────────────────
   if (loading) {
@@ -218,6 +209,9 @@ const Index = () => {
       {!isForeman && (
         <AIAssistant projectId={pid} projectName={projectName} userRole={userRole} />
       )}
+
+      {/* ── PWA Install ── */}
+      <InstallPWA />
 
       {/* ── Нижний отступ ── */}
       <div className="h-[70px]" />
