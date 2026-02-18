@@ -21,12 +21,33 @@ export function useCalendarEvents(projectId: string) {
 export function useCreateEvent() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (event: Partial<CalendarEvent>) => {
-      const { error } = await supabase.from("calendar_events").insert(event as any);
+    mutationFn: async (event: Partial<CalendarEvent> & { project_id: string }) => {
+      const { data, error } = await supabase
+        .from("calendar_events")
+        .insert({ ...event, is_done: false, created_at: new Date().toISOString() } as any)
+        .select()
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["calendar"] });
+    },
+  });
+}
+
+export function useToggleEventDone() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, isDone }: { id: string; isDone: boolean }) => {
+      const { error } = await supabase
+        .from("calendar_events")
+        .update({ is_done: !isDone } as any)
+        .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: ["calendar", variables.project_id] });
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["calendar"] });
     },
   });
 }
