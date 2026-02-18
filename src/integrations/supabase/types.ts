@@ -588,6 +588,7 @@ export type Database = {
       materials: {
         Row: {
           category: string | null
+          code_1c: string | null
           deficit: number
           eta: string | null
           id: string
@@ -597,16 +598,19 @@ export type Database = {
           on_site: number
           order_date: string | null
           ordered: number
+          price_per_unit: number | null
           project_id: string | null
           shipped: number
           status: string
           supplier: string | null
+          supplier_inn: string | null
           total_required: number
           unit: string
           updated_at: string
         }
         Insert: {
           category?: string | null
+          code_1c?: string | null
           deficit?: number
           eta?: string | null
           id?: string
@@ -616,16 +620,19 @@ export type Database = {
           on_site?: number
           order_date?: string | null
           ordered?: number
+          price_per_unit?: number | null
           project_id?: string | null
           shipped?: number
           status?: string
           supplier?: string | null
+          supplier_inn?: string | null
           total_required?: number
           unit: string
           updated_at?: string
         }
         Update: {
           category?: string | null
+          code_1c?: string | null
           deficit?: number
           eta?: string | null
           id?: string
@@ -635,10 +642,12 @@ export type Database = {
           on_site?: number
           order_date?: string | null
           ordered?: number
+          price_per_unit?: number | null
           project_id?: string | null
           shipped?: number
           status?: string
           supplier?: string | null
+          supplier_inn?: string | null
           total_required?: number
           unit?: string
           updated_at?: string
@@ -691,6 +700,84 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      orders: {
+        Row: {
+          actual_delivery: string | null
+          created_at: string
+          expected_delivery: string | null
+          id: string
+          material_id: string | null
+          material_name: string
+          notes: string | null
+          order_date: string | null
+          order_number: string | null
+          order_number_1c: string | null
+          price_per_unit: number | null
+          project_id: string | null
+          quantity: number
+          status: string
+          supplier: string
+          supplier_inn: string | null
+          total_amount: number | null
+          unit: string
+        }
+        Insert: {
+          actual_delivery?: string | null
+          created_at?: string
+          expected_delivery?: string | null
+          id?: string
+          material_id?: string | null
+          material_name: string
+          notes?: string | null
+          order_date?: string | null
+          order_number?: string | null
+          order_number_1c?: string | null
+          price_per_unit?: number | null
+          project_id?: string | null
+          quantity?: number
+          status?: string
+          supplier: string
+          supplier_inn?: string | null
+          total_amount?: number | null
+          unit?: string
+        }
+        Update: {
+          actual_delivery?: string | null
+          created_at?: string
+          expected_delivery?: string | null
+          id?: string
+          material_id?: string | null
+          material_name?: string
+          notes?: string | null
+          order_date?: string | null
+          order_number?: string | null
+          order_number_1c?: string | null
+          price_per_unit?: number | null
+          project_id?: string | null
+          quantity?: number
+          status?: string
+          supplier?: string
+          supplier_inn?: string | null
+          total_amount?: number | null
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       plan_fact: {
         Row: {
