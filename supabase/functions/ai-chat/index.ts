@@ -28,11 +28,12 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, projectName, userRole } = await req.json();
+    const { messages, projectName, userRole, systemPrompt } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const contextNote = `Контекст: Проект "${projectName || "Неизвестный"}". Роль пользователя: ${userRole || "не указана"}.`;
+    const finalSystemPrompt = systemPrompt || (SYSTEM_PROMPT + "\n\n" + contextNote);
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -45,7 +46,7 @@ serve(async (req) => {
         body: JSON.stringify({
           model: "google/gemini-3-flash-preview",
           messages: [
-            { role: "system", content: SYSTEM_PROMPT + "\n\n" + contextNote },
+            { role: "system", content: finalSystemPrompt },
             ...messages,
           ],
           stream: true,
