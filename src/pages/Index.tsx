@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAuth } from "@/hooks/useAuth";
 import TopBar from "@/components/TopBar";
 import TabBar from "@/components/TabBar";
@@ -204,7 +205,9 @@ const Index = () => {
 
       {/* ── Контент ── */}
       <div className="animate-fade-in">
-        {renderTab()}
+        <ErrorBoundary>
+          {renderTab()}
+        </ErrorBoundary>
       </div>
 
       {/* ── ИИ-ассистент (FAB) — только не для прораба, у него своя вкладка ── */}
