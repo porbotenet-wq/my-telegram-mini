@@ -6,6 +6,8 @@ import {
   alertsListScreen,
   alertDetailScreen,
   settingsScreen,
+  approvalsListScreen,
+  approvalDetailScreen,
 } from "../_shared/botScreens.ts";
 import { getSession, setState, resetSession, STEP_PROMPTS } from "../_shared/botFSM.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -330,6 +332,40 @@ async function handleCallback(cb: any) {
   if (action === "show" && entity === "settings") {
     const screen = settingsScreen(cb.from.first_name);
     await editMessage(chatId, msgId, screen.text, { reply_markup: screen.keyboard });
+    return;
+  }
+
+  // APPROVALS LIST
+  if (action === "list" && entity === "approvals") {
+    const screen = await approvalsListScreen(id || undefined);
+    await editMessage(chatId, msgId, screen.text, { reply_markup: screen.keyboard });
+    return;
+  }
+
+  // APPROVAL DETAIL
+  if (action === "approval" && entity === "detail" && id) {
+    const screen = await approvalDetailScreen(id);
+    await editMessage(chatId, msgId, screen.text, { reply_markup: screen.keyboard });
+    return;
+  }
+
+  // APPROVE / REJECT
+  if (action === "approve" && (entity === "yes" || entity === "no") && id) {
+    const decision = entity === "yes" ? "approved" : "rejected";
+    const emoji = entity === "yes" ? "✅" : "❌";
+
+    await supabase
+      .from("approvals")
+      .update({
+        status: decision,
+        decided_at: new Date().toISOString(),
+        decision_comment: entity === "no" ? "Отклонено через бот" : null,
+      })
+      .eq("id", id);
+
+    await editMessage(chatId, msgId, `${emoji} Согласование ${decision === "approved" ? "утверждено" : "отклонено"}!`, {
+      reply_markup: { inline_keyboard: [[{ text: "📝 Согласования", callback_data: "list:approvals" }, { text: "🏠 Домой", callback_data: "home" }]] },
+    });
     return;
   }
 }

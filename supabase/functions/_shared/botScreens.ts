@@ -160,3 +160,68 @@ export function settingsScreen(displayName: string) {
 
   return { text, keyboard };
 }
+
+// ─── APPROVALS ───────────────────────────────────────
+export async function approvalsListScreen(projectId?: string) {
+  let query = supabase
+    .from("approvals")
+    .select("id, title, type, status, level, created_at, project_id")
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  if (projectId) query = query.eq("project_id", projectId);
+  const { data: approvals } = await query;
+
+  if (!approvals || approvals.length === 0) {
+    return {
+      text: "✅ <b>Нет ожидающих согласований</b>",
+      keyboard: inlineKeyboard([[{ text: "◀️ Назад", callback_data: projectId ? buildCallback("show", "project", projectId) : buildCallback("home") }]]),
+    };
+  }
+
+  const typeIcons: Record<string, string> = { daily_log: "📋", material_request: "📦", task_completion: "✔️", budget: "💰", other: "📌" };
+
+  const text =
+    `📝 <b>Согласования (${approvals.length} ожидают):</b>\n\n` +
+    approvals.map((a: any, i: number) => `${typeIcons[a.type] || "📌"} ${i + 1}. ${a.title}\n   Уровень ${a.level} · ${new Date(a.created_at).toLocaleDateString("ru-RU")}`).join("\n\n");
+
+  const buttons = approvals.map((a: any) => [
+    { text: `✅ ${a.title.slice(0, 20)}`, callback_data: buildCallback("approve", "yes", a.id) },
+    { text: `❌`, callback_data: buildCallback("approve", "no", a.id) },
+  ]);
+  buttons.push([{ text: "◀️ Назад", callback_data: projectId ? buildCallback("show", "project", projectId) : buildCallback("home") }]);
+
+  return { text, keyboard: inlineKeyboard(buttons) };
+}
+
+export async function approvalDetailScreen(approvalId: string) {
+  const { data: a } = await supabase.from("approvals").select("*").eq("id", approvalId).single();
+  if (!a) {
+    return {
+      text: "❌ Согласование не найдено",
+      keyboard: inlineKeyboard([[{ text: "◀️ Назад", callback_data: buildCallback("list", "approvals") }]]),
+    };
+  }
+
+  const typeLabels: Record<string, string> = { daily_log: "Дневной отчёт", material_request: "Заявка на материалы", task_completion: "Завершение задачи", budget: "Бюджет", other: "Прочее" };
+
+  const text =
+    `📝 <b>${a.title}</b>\n\n` +
+    `Тип: ${typeLabels[a.type] || a.type}\n` +
+    `Уровень: ${a.level}\n` +
+    `Статус: ${a.status === "pending" ? "⏳ Ожидает" : a.status === "approved" ? "✅ Согласовано" : "❌ Отклонено"}\n` +
+    (a.description ? `\n${a.description}\n` : "") +
+    `\n📅 ${new Date(a.created_at).toLocaleString("ru-RU")}`;
+
+  const buttons: any[][] = [];
+  if (a.status === "pending") {
+    buttons.push([
+      { text: "✅ Согласовать", callback_data: buildCallback("approve", "yes", a.id) },
+      { text: "❌ Отклонить", callback_data: buildCallback("approve", "no", a.id) },
+    ]);
+  }
+  buttons.push([{ text: "◀️ Назад", callback_data: buildCallback("list", "approvals") }]);
+
+  return { text, keyboard: inlineKeyboard(buttons) };
+}
