@@ -57,6 +57,13 @@ export type Database = {
             foreignKeyName: "ai_chat_messages_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "ai_chat_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
@@ -135,6 +142,13 @@ export type Database = {
             foreignKeyName: "alerts_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "alerts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
@@ -197,6 +211,13 @@ export type Database = {
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "approvals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
+          },
           {
             foreignKeyName: "approvals_project_id_fkey"
             columns: ["project_id"]
@@ -277,6 +298,66 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      bot_event_queue: {
+        Row: {
+          attempts: number
+          created_at: string
+          event_type: string
+          id: string
+          last_error: string | null
+          payload: Json | null
+          priority: string
+          processed_at: string | null
+          project_id: string | null
+          scheduled_at: string
+          target_chat_ids: string[] | null
+          target_roles: string[] | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          event_type: string
+          id?: string
+          last_error?: string | null
+          payload?: Json | null
+          priority?: string
+          processed_at?: string | null
+          project_id?: string | null
+          scheduled_at?: string
+          target_chat_ids?: string[] | null
+          target_roles?: string[] | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          event_type?: string
+          id?: string
+          last_error?: string | null
+          payload?: Json | null
+          priority?: string
+          processed_at?: string | null
+          project_id?: string | null
+          scheduled_at?: string
+          target_chat_ids?: string[] | null
+          target_roles?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_event_queue_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "bot_event_queue_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       bot_sessions: {
         Row: {
@@ -359,6 +440,13 @@ export type Database = {
             foreignKeyName: "calendar_events_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "calendar_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
@@ -408,6 +496,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "facades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crews_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "crews_project_id_fkey"
@@ -478,6 +573,13 @@ export type Database = {
             foreignKeyName: "daily_logs_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "daily_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
@@ -521,6 +623,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "document_folders"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_folders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "document_folders_project_id_fkey"
@@ -581,6 +690,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "document_folders"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "documents_project_id_fkey"
@@ -682,6 +798,13 @@ export type Database = {
             foreignKeyName: "ecosystem_tasks_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "ecosystem_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
@@ -719,6 +842,13 @@ export type Database = {
           total_modules?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "facades_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
+          },
           {
             foreignKeyName: "facades_project_id_fkey"
             columns: ["project_id"]
@@ -868,6 +998,13 @@ export type Database = {
             foreignKeyName: "materials_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "materials_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
@@ -991,6 +1128,13 @@ export type Database = {
             foreignKeyName: "orders_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "orders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
@@ -1062,6 +1206,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "floors"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_fact_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "plan_fact_project_id_fkey"
@@ -1147,6 +1298,13 @@ export type Database = {
           telegram_link?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "project_chats_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
+          },
           {
             foreignKeyName: "project_chats_project_id_fkey"
             columns: ["project_id"]
@@ -1383,6 +1541,13 @@ export type Database = {
             foreignKeyName: "telegram_notification_log_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "telegram_notification_log_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
@@ -1435,6 +1600,13 @@ export type Database = {
           xp?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "user_xp_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
+          },
           {
             foreignKeyName: "user_xp_project_id_fkey"
             columns: ["project_id"]
@@ -1505,6 +1677,13 @@ export type Database = {
             foreignKeyName: "work_types_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "work_types_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
@@ -1548,10 +1727,33 @@ export type Database = {
             foreignKeyName: "calendar_events_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "calendar_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
+      }
+      portfolio_stats: {
+        Row: {
+          critical_alerts: number | null
+          days_until_deadline: number | null
+          deficit_materials: number | null
+          open_alerts: number | null
+          progress_pct: number | null
+          project_code: string | null
+          project_id: string | null
+          project_name: string | null
+          project_status: string | null
+          total_fact: number | null
+          total_plan: number | null
+        }
+        Relationships: []
       }
       upcoming_events: {
         Row: {
@@ -1566,6 +1768,13 @@ export type Database = {
           type: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "calendar_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
+          },
           {
             foreignKeyName: "calendar_events_project_id_fkey"
             columns: ["project_id"]
