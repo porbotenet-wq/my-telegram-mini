@@ -1329,6 +1329,7 @@ export type Database = {
           fact_value: number
           floor_id: string | null
           id: string
+          input_type: string | null
           notes: string | null
           photo_urls: string[] | null
           plan_value: number
@@ -1349,6 +1350,7 @@ export type Database = {
           fact_value?: number
           floor_id?: string | null
           id?: string
+          input_type?: string | null
           notes?: string | null
           photo_urls?: string[] | null
           plan_value?: number
@@ -1369,6 +1371,7 @@ export type Database = {
           fact_value?: number
           floor_id?: string | null
           id?: string
+          input_type?: string | null
           notes?: string | null
           photo_urls?: string[] | null
           plan_value?: number
@@ -1444,6 +1447,7 @@ export type Database = {
           onboarding_completed_at: string | null
           pin_hash: string | null
           telegram_chat_id: string | null
+          telegram_username: string | null
           updated_at: string
           user_id: string
         }
@@ -1458,6 +1462,7 @@ export type Database = {
           onboarding_completed_at?: string | null
           pin_hash?: string | null
           telegram_chat_id?: string | null
+          telegram_username?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1472,6 +1477,7 @@ export type Database = {
           onboarding_completed_at?: string | null
           pin_hash?: string | null
           telegram_chat_id?: string | null
+          telegram_username?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -2115,6 +2121,10 @@ export type Database = {
       cleanup_expired_bot_sessions: { Args: never; Returns: number }
       cleanup_sync_log: { Args: never; Returns: undefined }
       current_company_id: { Args: never; Returns: string }
+      get_user_roles: {
+        Args: { p_user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"][]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
