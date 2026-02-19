@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.telegram-bot]
 verify_jwt = false
+
+[functions.sync-1c]
+verify_jwt = false
+
+[functions.bot-whitelabel]
+verify_jwt = false
