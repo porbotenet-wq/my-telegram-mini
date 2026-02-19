@@ -310,9 +310,13 @@ export type Database = {
           priority: string
           processed_at: string | null
           project_id: string | null
+          retry_count: number
           scheduled_at: string
+          sent_at: string | null
+          status: string
           target_chat_ids: string[] | null
           target_roles: string[] | null
+          target_users: string[] | null
         }
         Insert: {
           attempts?: number
@@ -324,9 +328,13 @@ export type Database = {
           priority?: string
           processed_at?: string | null
           project_id?: string | null
+          retry_count?: number
           scheduled_at?: string
+          sent_at?: string | null
+          status?: string
           target_chat_ids?: string[] | null
           target_roles?: string[] | null
+          target_users?: string[] | null
         }
         Update: {
           attempts?: number
@@ -338,9 +346,13 @@ export type Database = {
           priority?: string
           processed_at?: string | null
           project_id?: string | null
+          retry_count?: number
           scheduled_at?: string
+          sent_at?: string | null
+          status?: string
           target_chat_ids?: string[] | null
           target_roles?: string[] | null
+          target_users?: string[] | null
         }
         Relationships: [
           {
@@ -1235,6 +1247,7 @@ export type Database = {
           created_at: string
           display_name: string
           id: string
+          notification_preferences: Json | null
           onboarding_attempts_count: number
           onboarding_completed: boolean
           onboarding_completed_at: string | null
@@ -1247,6 +1260,7 @@ export type Database = {
           created_at?: string
           display_name: string
           id?: string
+          notification_preferences?: Json | null
           onboarding_attempts_count?: number
           onboarding_completed?: boolean
           onboarding_completed_at?: string | null
@@ -1259,6 +1273,7 @@ export type Database = {
           created_at?: string
           display_name?: string
           id?: string
+          notification_preferences?: Json | null
           onboarding_attempts_count?: number
           onboarding_completed?: boolean
           onboarding_completed_at?: string | null
@@ -1786,6 +1801,7 @@ export type Database = {
       }
     }
     Functions: {
+      cleanup_expired_bot_sessions: { Args: never; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1804,6 +1820,7 @@ export type Database = {
         }
         Returns: Json
       }
+      refresh_portfolio_stats: { Args: never; Returns: undefined }
       seed_project_folders: {
         Args: { p_project_id: string }
         Returns: undefined
