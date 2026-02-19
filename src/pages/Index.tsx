@@ -31,6 +31,7 @@ const ReportPDF = lazy(() => import("@/components/ReportPDF"));
 const InstallPWA = lazy(() => import("@/components/InstallPWA"));
 const DailyLogs = lazy(() => import("@/components/DailyLogs"));
 const Approvals = lazy(() => import("@/components/Approvals"));
+const TelegramSettings = lazy(() => import("@/components/TelegramSettings"));
 
 // ── Типы ─────────────────────────────────────────────────
 type Screen = "projects" | "create" | "project" | "director";
@@ -178,6 +179,7 @@ const Index = () => {
       case "xp":      return user ? (
         <GamificationPanel userId={user.id} projectId={pid} userRole={userRole} />
       ) : null;
+      case "settings": return <TelegramSettings />;
       default:        return <Dashboard projectId={pid} />;
     }
   };
