@@ -72,6 +72,7 @@ export type Database = {
       alerts: {
         Row: {
           category: string | null
+          company_id: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -86,12 +87,14 @@ export type Database = {
           resolved_at: string | null
           resolved_by: string | null
           source_task_id: string | null
+          synced_to_1c: string | null
           target_roles: Database["public"]["Enums"]["app_role"][] | null
           title: string
           type: string
         }
         Insert: {
           category?: string | null
+          company_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -106,12 +109,14 @@ export type Database = {
           resolved_at?: string | null
           resolved_by?: string | null
           source_task_id?: string | null
+          synced_to_1c?: string | null
           target_roles?: Database["public"]["Enums"]["app_role"][] | null
           title: string
           type?: string
         }
         Update: {
           category?: string | null
+          company_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -126,11 +131,26 @@ export type Database = {
           resolved_at?: string | null
           resolved_by?: string | null
           source_task_id?: string | null
+          synced_to_1c?: string | null
           target_roles?: Database["public"]["Enums"]["app_role"][] | null
           title?: string
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "alerts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alerts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "holding_portfolio"
+            referencedColumns: ["company_id"]
+          },
           {
             foreignKeyName: "alerts_facade_id_fkey"
             columns: ["facade_id"]
@@ -374,6 +394,7 @@ export type Database = {
       bot_sessions: {
         Row: {
           chat_id: string
+          company_id: string | null
           context: Json
           expires_at: string
           message_id: number | null
@@ -383,6 +404,7 @@ export type Database = {
         }
         Insert: {
           chat_id: string
+          company_id?: string | null
           context?: Json
           expires_at?: string
           message_id?: number | null
@@ -392,6 +414,7 @@ export type Database = {
         }
         Update: {
           chat_id?: string
+          company_id?: string | null
           context?: Json
           expires_at?: string
           message_id?: number | null
@@ -399,7 +422,22 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "bot_sessions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bot_sessions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "holding_portfolio"
+            referencedColumns: ["company_id"]
+          },
+        ]
       }
       calendar_events: {
         Row: {
@@ -464,8 +502,72 @@ export type Database = {
           },
         ]
       }
+      companies: {
+        Row: {
+          bot_token: string | null
+          bot_username: string | null
+          code: string | null
+          created_at: string | null
+          holding_id: string | null
+          id: string
+          inn: string | null
+          is_active: boolean | null
+          logo_url: string | null
+          mini_app_url: string | null
+          name: string
+          primary_color: string | null
+          settings: Json | null
+        }
+        Insert: {
+          bot_token?: string | null
+          bot_username?: string | null
+          code?: string | null
+          created_at?: string | null
+          holding_id?: string | null
+          id?: string
+          inn?: string | null
+          is_active?: boolean | null
+          logo_url?: string | null
+          mini_app_url?: string | null
+          name: string
+          primary_color?: string | null
+          settings?: Json | null
+        }
+        Update: {
+          bot_token?: string | null
+          bot_username?: string | null
+          code?: string | null
+          created_at?: string | null
+          holding_id?: string | null
+          id?: string
+          inn?: string | null
+          is_active?: boolean | null
+          logo_url?: string | null
+          mini_app_url?: string | null
+          name?: string
+          primary_color?: string | null
+          settings?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "companies_holding_id_fkey"
+            columns: ["holding_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "companies_holding_id_fkey"
+            columns: ["holding_id"]
+            isOneToOne: false
+            referencedRelation: "holding_portfolio"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
       crews: {
         Row: {
+          company_id: string | null
           created_at: string
           facade_id: string | null
           foreman_name: string | null
@@ -478,6 +580,7 @@ export type Database = {
           specialization: string | null
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           facade_id?: string | null
           foreman_name?: string | null
@@ -490,6 +593,7 @@ export type Database = {
           specialization?: string | null
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           facade_id?: string | null
           foreman_name?: string | null
@@ -502,6 +606,20 @@ export type Database = {
           specialization?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "crews_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crews_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "holding_portfolio"
+            referencedColumns: ["company_id"]
+          },
           {
             foreignKeyName: "crews_facade_id_fkey"
             columns: ["facade_id"]
@@ -939,6 +1057,7 @@ export type Database = {
         Row: {
           category: string | null
           code_1c: string | null
+          company_id: string | null
           deficit: number
           eta: string | null
           id: string
@@ -955,13 +1074,16 @@ export type Database = {
           supplier: string | null
           supplier_code_1c: string | null
           supplier_inn: string | null
+          synced_to_1c: string | null
           total_required: number
           unit: string
           updated_at: string
+          updated_from_1c: string | null
         }
         Insert: {
           category?: string | null
           code_1c?: string | null
+          company_id?: string | null
           deficit?: number
           eta?: string | null
           id?: string
@@ -978,13 +1100,16 @@ export type Database = {
           supplier?: string | null
           supplier_code_1c?: string | null
           supplier_inn?: string | null
+          synced_to_1c?: string | null
           total_required?: number
           unit: string
           updated_at?: string
+          updated_from_1c?: string | null
         }
         Update: {
           category?: string | null
           code_1c?: string | null
+          company_id?: string | null
           deficit?: number
           eta?: string | null
           id?: string
@@ -1001,11 +1126,27 @@ export type Database = {
           supplier?: string | null
           supplier_code_1c?: string | null
           supplier_inn?: string | null
+          synced_to_1c?: string | null
           total_required?: number
           unit?: string
           updated_at?: string
+          updated_from_1c?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "materials_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "materials_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "holding_portfolio"
+            referencedColumns: ["company_id"]
+          },
           {
             foreignKeyName: "materials_project_id_fkey"
             columns: ["project_id"]
@@ -1064,6 +1205,7 @@ export type Database = {
       orders: {
         Row: {
           actual_delivery: string | null
+          company_id: string | null
           created_at: string
           expected_delivery: string | null
           id: string
@@ -1080,12 +1222,16 @@ export type Database = {
           supplier: string
           supplier_code_1c: string | null
           supplier_inn: string | null
+          supplier_name: string | null
+          synced_to_1c: string | null
           total_amount: number | null
           unit: string
           updated_at: string | null
+          updated_from_1c: string | null
         }
         Insert: {
           actual_delivery?: string | null
+          company_id?: string | null
           created_at?: string
           expected_delivery?: string | null
           id?: string
@@ -1102,12 +1248,16 @@ export type Database = {
           supplier: string
           supplier_code_1c?: string | null
           supplier_inn?: string | null
+          supplier_name?: string | null
+          synced_to_1c?: string | null
           total_amount?: number | null
           unit?: string
           updated_at?: string | null
+          updated_from_1c?: string | null
         }
         Update: {
           actual_delivery?: string | null
+          company_id?: string | null
           created_at?: string
           expected_delivery?: string | null
           id?: string
@@ -1124,11 +1274,28 @@ export type Database = {
           supplier?: string
           supplier_code_1c?: string | null
           supplier_inn?: string | null
+          supplier_name?: string | null
+          synced_to_1c?: string | null
           total_amount?: number | null
           unit?: string
           updated_at?: string | null
+          updated_from_1c?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "holding_portfolio"
+            referencedColumns: ["company_id"]
+          },
           {
             foreignKeyName: "orders_material_id_fkey"
             columns: ["material_id"]
@@ -1154,6 +1321,7 @@ export type Database = {
       }
       plan_fact: {
         Row: {
+          company_id: string | null
           created_at: string
           crew_id: string | null
           date: string
@@ -1165,12 +1333,15 @@ export type Database = {
           photo_urls: string[] | null
           plan_value: number
           project_id: string | null
+          ref_1c: string | null
           reported_by: string | null
+          synced_to_1c: string | null
           updated_at: string
           week_number: number
           work_type_id: string | null
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           crew_id?: string | null
           date: string
@@ -1182,12 +1353,15 @@ export type Database = {
           photo_urls?: string[] | null
           plan_value?: number
           project_id?: string | null
+          ref_1c?: string | null
           reported_by?: string | null
+          synced_to_1c?: string | null
           updated_at?: string
           week_number: number
           work_type_id?: string | null
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           crew_id?: string | null
           date?: string
@@ -1199,12 +1373,28 @@ export type Database = {
           photo_urls?: string[] | null
           plan_value?: number
           project_id?: string | null
+          ref_1c?: string | null
           reported_by?: string | null
+          synced_to_1c?: string | null
           updated_at?: string
           week_number?: number
           work_type_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "plan_fact_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_fact_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "holding_portfolio"
+            referencedColumns: ["company_id"]
+          },
           {
             foreignKeyName: "plan_fact_facade_id_fkey"
             columns: ["facade_id"]
@@ -1244,6 +1434,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          company_id: string | null
           created_at: string
           display_name: string
           id: string
@@ -1257,6 +1448,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           display_name: string
           id?: string
@@ -1270,6 +1462,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           display_name?: string
           id?: string
@@ -1282,7 +1475,22 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "holding_portfolio"
+            referencedColumns: ["company_id"]
+          },
+        ]
       }
       project_chats: {
         Row: {
@@ -1345,6 +1553,7 @@ export type Database = {
           client_ogrn: string | null
           client_phone: string | null
           code: string | null
+          company_id: string | null
           contacts: Json | null
           created_at: string
           created_by: string | null
@@ -1375,6 +1584,7 @@ export type Database = {
           client_ogrn?: string | null
           client_phone?: string | null
           code?: string | null
+          company_id?: string | null
           contacts?: Json | null
           created_at?: string
           created_by?: string | null
@@ -1405,6 +1615,7 @@ export type Database = {
           client_ogrn?: string | null
           client_phone?: string | null
           code?: string | null
+          company_id?: string | null
           contacts?: Json | null
           created_at?: string
           created_by?: string | null
@@ -1420,7 +1631,22 @@ export type Database = {
           updated_at?: string
           work_type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "projects_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "holding_portfolio"
+            referencedColumns: ["company_id"]
+          },
+        ]
       }
       shipments: {
         Row: {
@@ -1523,6 +1749,54 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_log: {
+        Row: {
+          company_id: string | null
+          details: string | null
+          direction: string
+          entity: string
+          errors_count: number | null
+          id: string
+          records_synced: number | null
+          synced_at: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          details?: string | null
+          direction: string
+          entity: string
+          errors_count?: number | null
+          id?: string
+          records_synced?: number | null
+          synced_at?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          details?: string | null
+          direction?: string
+          entity?: string
+          errors_count?: number | null
+          id?: string
+          records_synced?: number | null
+          synced_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_log_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sync_log_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "holding_portfolio"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
       telegram_notification_log: {
         Row: {
           created_at: string
@@ -1570,21 +1844,42 @@ export type Database = {
       }
       user_roles: {
         Row: {
+          company_id: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
+          scope: string | null
           user_id: string
         }
         Insert: {
+          company_id?: string | null
           id?: string
           role: Database["public"]["Enums"]["app_role"]
+          scope?: string | null
           user_id: string
         }
         Update: {
+          company_id?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          scope?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_roles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "holding_portfolio"
+            referencedColumns: ["company_id"]
+          },
+        ]
       }
       user_xp: {
         Row: {
@@ -1706,6 +2001,21 @@ export type Database = {
       }
     }
     Views: {
+      holding_portfolio: {
+        Row: {
+          active_projects: number | null
+          avg_progress: number | null
+          company_code: string | null
+          company_id: string | null
+          company_name: string | null
+          critical_alerts: number | null
+          deficit_materials: number | null
+          nearest_deadline_days: number | null
+          total_alerts: number | null
+          total_projects: number | null
+        }
+        Relationships: []
+      }
       onboarding_analytics: {
         Row: {
           avg_read_seconds: number | null
@@ -1801,7 +2111,10 @@ export type Database = {
       }
     }
     Functions: {
+      accessible_company_ids: { Args: never; Returns: string[] }
       cleanup_expired_bot_sessions: { Args: never; Returns: number }
+      cleanup_sync_log: { Args: never; Returns: undefined }
+      current_company_id: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1809,6 +2122,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_holding_director: { Args: never; Returns: boolean }
       record_onboarding_attempt: {
         Args: {
           p_answers: Json
