@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useXP } from "@/hooks/useXP";
-import { Loader2 } from "lucide-react";
 import PhotoUpload from "@/components/PhotoUpload";
 import XpToast from "@/components/XpToast";
 
@@ -12,23 +11,59 @@ interface AlertsProps {
 
 type Filter = "all" | "ug" | "wn" | "info";
 
-const priorityMap: Record<string, { border: string; tp: string }> = {
-  critical: { border: "border-l-destructive", tp: "ug" },
-  high: { border: "border-l-destructive", tp: "ug" },
-  normal: { border: "border-l-warning", tp: "wn" },
-  medium: { border: "border-l-warning", tp: "wn" },
-  low: { border: "border-l-primary", tp: "info" },
-  info: { border: "border-l-primary", tp: "info" },
+const priorityConfig: Record<string, {
+  tp: string; dot: string; border: string; badge: string; badgeText: string;
+}> = {
+  critical: {
+    tp: "ug",
+    dot: "bg-destructive",
+    border: "border-l-destructive",
+    badge: "bg-destructive/10 text-destructive border border-destructive/20",
+    badgeText: "КРИТ",
+  },
+  high: {
+    tp: "ug",
+    dot: "bg-destructive/80",
+    border: "border-l-destructive",
+    badge: "bg-destructive/10 text-destructive border border-destructive/20",
+    badgeText: "ВЫСОК",
+  },
+  normal: {
+    tp: "wn",
+    dot: "bg-warning",
+    border: "border-l-warning",
+    badge: "bg-warning/10 text-warning border border-warning/20",
+    badgeText: "СРЕДН",
+  },
+  medium: {
+    tp: "wn",
+    dot: "bg-warning",
+    border: "border-l-warning",
+    badge: "bg-warning/10 text-warning border border-warning/20",
+    badgeText: "СРЕДН",
+  },
+  low: {
+    tp: "info",
+    dot: "bg-primary/60",
+    border: "border-l-primary",
+    badge: "bg-primary/10 text-primary border border-primary/20",
+    badgeText: "ИНФО",
+  },
+  info: {
+    tp: "info",
+    dot: "bg-primary/60",
+    border: "border-l-primary",
+    badge: "bg-primary/10 text-primary border border-primary/20",
+    badgeText: "ИНФО",
+  },
 };
 
-const iconMap: Record<string, string> = {
-  critical: "🔴",
-  high: "🔴",
-  normal: "⚠️",
-  medium: "⚠️",
-  low: "ℹ️",
-  info: "ℹ️",
-};
+const filterBtns: { id: Filter; label: string }[] = [
+  { id: "all", label: "Все" },
+  { id: "ug", label: "Критические" },
+  { id: "wn", label: "Предупреждения" },
+  { id: "info", label: "Инфо" },
+];
 
 const Alerts = ({ projectId }: AlertsProps) => {
   const { user } = useAuth();
@@ -39,7 +74,7 @@ const Alerts = ({ projectId }: AlertsProps) => {
   const [resolving, setResolving] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    (async () => {
       const { data } = await supabase
         .from("alerts")
         .select("*")
@@ -48,8 +83,7 @@ const Alerts = ({ projectId }: AlertsProps) => {
         .limit(50);
       setAlerts(data || []);
       setLoading(false);
-    };
-    fetchData();
+    })();
   }, [projectId]);
 
   const handleResolve = async (alertId: string) => {
@@ -67,47 +101,60 @@ const Alerts = ({ projectId }: AlertsProps) => {
   };
 
   if (loading) {
-    return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+    return (
+      <div className="p-4 space-y-2 animate-fade-in">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="skeleton h-16 rounded-lg" />
+        ))}
+      </div>
+    );
   }
 
   const filtered = alerts.filter((a) => {
     if (filter === "all") return true;
-    const pm = priorityMap[a.priority] || priorityMap.normal;
-    return pm.tp === filter;
+    const cfg = priorityConfig[a.priority] || priorityConfig.normal;
+    return cfg.tp === filter;
   });
 
-  const filterBtns: { id: Filter; label: string }[] = [
-    { id: "all", label: "Все" },
-    { id: "ug", label: "🔴 Критические" },
-    { id: "wn", label: "⚠️ Предупреждения" },
-    { id: "info", label: "ℹ️ Инфо" },
-  ];
+  const critCount = alerts.filter((a) => a.priority === "critical").length;
+  const highCount = alerts.filter((a) => a.priority === "high").length;
 
   if (alerts.length === 0) {
     return (
-      <div className="animate-fade-in p-2.5 text-center py-8">
-        <div className="text-2xl mb-2">🔔</div>
-        <div className="text-[12px] text-t2 font-semibold">Нет уведомлений</div>
-        <div className="text-[10px] text-t3 mt-1">Алерты появятся при событиях на проекте</div>
+      <div className="flex flex-col items-center justify-center py-12 text-center animate-fade-in">
+        <div className="text-3xl mb-2 opacity-30">◉</div>
+        <p className="text-[hsl(var(--t2))] font-semibold text-sm">Нет уведомлений</p>
+        <p className="text-[hsl(var(--t3))] text-xs mt-1">Алерты появятся при событиях на объекте</p>
       </div>
     );
   }
 
   return (
-    <div className="animate-fade-in p-2.5">
+    <div className="p-4 space-y-3 animate-fade-in">
       {lastXp && <XpToast xp={lastXp.xp} action={lastXp.action} onDone={clearXp} />}
 
-      <div className="text-[10px] font-bold uppercase tracking-wider text-t3 my-3.5 flex items-center gap-2">
-        Уведомления ({alerts.length}) <span className="flex-1 h-px bg-border" />
-      </div>
+      {/* Счётчики */}
+      {(critCount > 0 || highCount > 0) && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-destructive/5 border border-destructive/15 rounded-lg">
+          <span className="w-2 h-2 rounded-full bg-destructive animate-pulse-dot" />
+          <span className="text-[11px] font-semibold text-destructive">
+            {critCount > 0 && `${critCount} критич.`}
+            {critCount > 0 && highCount > 0 && " · "}
+            {highCount > 0 && `${highCount} высокий`}
+          </span>
+        </div>
+      )}
 
-      <div className="flex gap-1 mb-2.5 flex-wrap">
+      {/* Фильтры */}
+      <div className="flex gap-1 flex-wrap">
         {filterBtns.map((f) => (
           <button
             key={f.id}
             onClick={() => setFilter(f.id)}
-            className={`px-2 py-1 rounded-sm font-sans text-[10px] font-bold transition-all ${
-              filter === f.id ? "bg-primary text-primary-foreground" : "bg-bg1 text-t1 border border-border hover:bg-bg2"
+            className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-all duration-150 ${
+              filter === f.id
+                ? "bg-primary text-primary-foreground"
+                : "bg-[hsl(var(--bg2))] text-[hsl(var(--t2))] border border-border hover:text-[hsl(var(--t1))] hover:border-white/10"
             }`}
           >
             {f.label}
@@ -115,46 +162,57 @@ const Alerts = ({ projectId }: AlertsProps) => {
         ))}
       </div>
 
-      {filtered.map((a) => {
-        const pm = priorityMap[a.priority] || priorityMap.normal;
-        const icon = iconMap[a.priority] || "ℹ️";
-        return (
-          <div key={a.id} className={`bg-bg1 rounded-sm mb-1.5 border-l-[3px] ${pm.border}`}>
-            <div className="flex gap-2 p-2.5">
-              <span className="text-base">{icon}</span>
-              <div className="flex-1">
-                <div className="text-[11px] font-semibold mb-0.5">{a.title}</div>
-                {a.description && <div className="text-[10px] text-t2 leading-snug">{a.description}</div>}
-                <div className="font-mono text-[9px] text-t3 mt-0.5">
-                  {new Date(a.created_at).toLocaleString("ru-RU", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}
+      {/* Список */}
+      <div className="space-y-1.5">
+        {filtered.map((a) => {
+          const cfg = priorityConfig[a.priority] || priorityConfig.normal;
+          const age = Math.round((Date.now() - new Date(a.created_at).getTime()) / 3600000);
+          const ageStr = age < 24 ? `${age}ч` : `${Math.round(age / 24)}д`;
+          return (
+            <div key={a.id} className={`bg-[hsl(var(--bg1))] rounded-lg border-l-[3px] ${cfg.border} border border-border overflow-hidden`}>
+              <div className="flex gap-2.5 p-3">
+                <span className={`w-2 h-2 rounded-full mt-1 flex-shrink-0 ${cfg.dot}`} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-[12px] font-semibold leading-tight">{a.title}</p>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${cfg.badge}`}>
+                        {cfg.badgeText}
+                      </span>
+                      {a.is_resolved ? (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-bold">✓</span>
+                      ) : (
+                        <button
+                          onClick={() => handleResolve(a.id)}
+                          disabled={resolving === a.id}
+                          className="text-[9px] font-bold px-2 py-1 rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors disabled:opacity-50"
+                        >
+                          {resolving === a.id ? "..." : "Закрыть"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {a.description && (
+                    <p className="text-[10px] text-[hsl(var(--t2))] leading-snug mt-1">{a.description}</p>
+                  )}
+                  <p className="num text-[9px] text-[hsl(var(--t3))] mt-1">{ageStr} назад</p>
                 </div>
               </div>
-              {a.is_resolved ? (
-                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-primary/12 text-primary self-start">✅</span>
-              ) : (
-                <button
-                  onClick={() => handleResolve(a.id)}
-                  disabled={resolving === a.id}
-                  className="text-[9px] font-bold px-2 py-1 rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors self-start disabled:opacity-50"
-                >
-                  {resolving === a.id ? "..." : "Закрыть"}
-                </button>
-              )}
+              <div className="px-3 pb-2">
+                <PhotoUpload
+                  photos={(a as any).photo_urls || []}
+                  onPhotosChange={async (urls) => {
+                    await supabase.from("alerts").update({ photo_urls: urls }).eq("id", a.id);
+                    setAlerts(prev => prev.map(al => al.id === a.id ? { ...al, photo_urls: urls } : al));
+                  }}
+                  folder={`alerts/${a.id}`}
+                  maxPhotos={3}
+                />
+              </div>
             </div>
-            <div className="px-2.5 pb-2">
-              <PhotoUpload
-                photos={(a as any).photo_urls || []}
-                onPhotosChange={async (urls) => {
-                  await supabase.from("alerts").update({ photo_urls: urls }).eq("id", a.id);
-                  setAlerts(prev => prev.map(al => al.id === a.id ? { ...al, photo_urls: urls } : al));
-                }}
-                folder={`alerts/${a.id}`}
-                maxPhotos={3}
-              />
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 };
