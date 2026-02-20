@@ -273,7 +273,12 @@ async function resolveTargets(
 }
 
 // ── Main handler ─────────────────────────────────────────────
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
+  if (CRON_SECRET && req.headers.get("x-cron-secret") !== CRON_SECRET) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
   const now = new Date().toISOString();
 
   // Берём до 50 pending событий за раз

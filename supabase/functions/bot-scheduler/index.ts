@@ -575,7 +575,12 @@ async function scheduleEveningFact(projects: { id: string; name: string }[]): Pr
 // ═══════════════════════════════════════════════════════════════
 // MAIN
 // ═══════════════════════════════════════════════════════════════
-serve(async () => {
+serve(async (req) => {
+  const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
+  if (CRON_SECRET && req.headers.get("x-cron-secret") !== CRON_SECRET) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
   const hour = mskHour();
   const day = mskDay();
   const results: Record<string, unknown> = { hour_msk: hour };
