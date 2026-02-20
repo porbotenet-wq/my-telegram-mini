@@ -43,3 +43,26 @@ dist-ssr
 .env.production
 .env.staging
 .env.*.local
+
+# Workspace files (not for repo)
+MEMORY.md
+SOUL.md
+USER.md
+IDENTITY.md
+AGENTS.md
+BOOTSTRAP.md
+HEARTBEAT.md
+TOOLS.md
+AUDIT_STSPHERA.md
+BOT-AUDIT.md
+LOVABLE-*.md
+PROJECT_SPEC*.md
+PROMPT-*.md
+ROADMAP.md
+TZ-*.md
+memory/
+media/
+.openclaw/
+sfera-*.html
+my-telegram-mini/
+normbase-parser/.env
