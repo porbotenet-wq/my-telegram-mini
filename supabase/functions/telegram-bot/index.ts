@@ -139,7 +139,8 @@ const typeLabels: Record<string, string> = { daily_log: "Дневной отчё
 function rolePrefix(roles: string[]) {
   if (isDirector(roles)) return "d";
   if (isPM(roles)) return "pm";
-  return "f";
+  if (isForeman(roles)) return "f";
+  return "g"; // generic
 }
 
 async function sendOrEdit(chatId: number, session: any, userId: string, text: string, buttons: any[][], state = "IDLE", ctx?: any) {
@@ -550,8 +551,9 @@ async function screenForemanMenu(chatId: number, user: BotUser, session: any) {
   const buttons = [
     [{ text: "📋 Подать отчёт", callback_data: "f:report_start" }],
     [{ text: "📊 Мой прогресс", callback_data: "f:progress" }, { text: "🔔 Алерты", callback_data: "f:alerts" }],
-    [{ text: "📋 Задачи", callback_data: "f:tasks" }, { text: "📋 Журнал", callback_data: "f:logs" }],
-    [{ text: "📂 Сменить проект", callback_data: "proj:list" }, { text: "⚙️ Настройки", callback_data: "c:settings" }],
+    [{ text: "📋 Задачи", callback_data: "f:tasks" }, { text: "⚙️ Процессы", callback_data: "f:workflow" }],
+    [{ text: "📋 Журнал", callback_data: "f:logs" }, { text: "⚙️ Настройки", callback_data: "c:settings" }],
+    [{ text: "📂 Сменить проект", callback_data: "proj:list" }],
     [{ text: "🚀 Открыть приложение", web_app: { url: APP_URL } }],
   ];
   await sendOrEdit(chatId, session, user.user_id, text, buttons, "IDLE", ctx);
@@ -656,6 +658,28 @@ async function screenForemanProgress(chatId: number, user: BotUser, session: any
     text += `<b>${f.name}</b>: ${progressBar(s.pct)} ${s.pct}%\n  ${s.totalFact}/${s.totalPlan} мод. · ${s.doneFloors}/${s.floors.length} эт.\n\n`;
   }
   await tgEdit(chatId, session.message_id, text, { inline_keyboard: [[{ text: "← Меню", callback_data: "f:menu" }]] });
+}
+
+// ══════════════════════════════════════════════════════════════
+// ЭКРАН: Общее меню (для ролей без отдельного меню)
+// ══════════════════════════════════════════════════════════════
+async function screenGenericMenu(chatId: number, user: BotUser, session: any) {
+  const projectId = session?.context?.project_id;
+  const project = projectId ? await getProject(projectId) : (await getProjects())[0];
+  const roleLabel = user.roles.length > 0 ? user.roles.join(", ") : "Сотрудник";
+  let text = `👤 <b>${user.display_name}</b> · ${roleLabel}\n${SEP}\n📅 ${todayStr()}\n\n`;
+  const ctx: any = { project_id: project?.id, project_name: project?.name };
+  if (project) {
+    text += `🏗️ ${project.name}\n`;
+  }
+  const buttons = [
+    [{ text: "📊 Дашборд", callback_data: "g:dash" }, { text: "🔔 Алерты", callback_data: "g:alerts" }],
+    [{ text: "⚙️ Процессы", callback_data: "g:workflow" }, { text: "📋 Задачи", callback_data: "g:tasks" }],
+    [{ text: "📋 Журналы", callback_data: "g:logs" }, { text: "⚙️ Настройки", callback_data: "c:settings" }],
+    [{ text: "📂 Сменить проект", callback_data: "proj:list" }],
+    [{ text: "🚀 Открыть приложение", web_app: { url: APP_URL } }],
+  ];
+  await sendOrEdit(chatId, session, user.user_id, text, buttons, "IDLE", ctx);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -904,8 +928,8 @@ async function handleUpdate(update: any) {
       if (isDirector(user.roles)) return screenDirectorMenu(chatId, user, session);
       if (isPM(user.roles)) return screenPMMenu(chatId, user, session);
       if (isForeman(user.roles)) return screenForemanMenu(chatId, user, session);
-      await tgSend(chatId, `👋 ${user.display_name}, ваша роль не настроена. Обратитесь к администратору.`);
-      return;
+      // Other roles — show a generic menu with workflow access
+      return screenGenericMenu(chatId, user, session);
     }
 
     // /help
@@ -980,7 +1004,7 @@ async function handleUpdate(update: any) {
       if (isDirector(user.roles)) return screenDirectorMenu(chatId, user, null);
       if (isPM(user.roles)) return screenPMMenu(chatId, user, null);
       if (isForeman(user.roles)) return screenForemanMenu(chatId, user, null);
-      return;
+      return screenGenericMenu(chatId, user, null);
     }
 
     // ── Projects ──
@@ -1041,12 +1065,21 @@ async function handleUpdate(update: any) {
     if (data === "f:alerts") return screenAlerts(chatId, user, session);
     if (data === "f:tasks") return screenTasks(chatId, user, session);
     if (data === "f:logs") return screenDailyLogs(chatId, user, session);
+    if (data === "f:workflow") return screenWorkflow(chatId, user, session);
     if (data === "f:facades") return screenFacades(chatId, user, session);
     if (data.startsWith("f:rep_facade:")) return screenForemanReportFloor(chatId, user, session, data.slice(13));
     if (data.startsWith("f:rep_floor:")) return screenForemanReportInput(chatId, user, session, data.slice(12));
     if (data.startsWith("f:rep_val:")) return screenForemanReportConfirm(chatId, user, session, parseInt(data.slice(10)));
     if (data.startsWith("f:rep_save:")) return saveForemanReport(chatId, user, session, parseInt(data.slice(11)));
     if (data.startsWith("f:facade:")) return screenFacadeDetail(chatId, user, session, data.slice(9));
+
+    // ── Generic (other roles) ──
+    if (data === "g:menu") return screenGenericMenu(chatId, user, session);
+    if (data === "g:dash") return screenDirectorDashboard(chatId, user, session);
+    if (data === "g:alerts") return screenAlerts(chatId, user, session);
+    if (data === "g:workflow") return screenWorkflow(chatId, user, session);
+    if (data === "g:tasks") return screenTasks(chatId, user, session);
+    if (data === "g:logs") return screenDailyLogs(chatId, user, session);
   }
 }
 
