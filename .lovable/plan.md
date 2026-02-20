@@ -1,129 +1,117 @@
 
 
-# Telegram Bot v4 -- Full Role-Based Architecture
+# Фаза 1+2: Стабилизация и рефакторинг Telegram-бота
 
-## Overview
+## Обзор
 
-Rewrite the Telegram bot to implement the complete screen architecture from the specification: 10 distinct roles, each with dedicated menus, "Incoming" (inbox) and "Send" screens, FSM document/photo flows, and auto-trigger notifications.
+8 задач в двух фазах: защита от подделок и спама, фикс багов, увеличение TTL, обработка ошибок, модуляризация, сохранение файлов в Storage, проверка RLS.
 
-## Current State vs Target
+---
 
-**Current bot (v3)** has 4 role paths: Director, PM, Foreman, Generic. All other roles (supply, production, pto, inspector, project) fall into the generic menu with limited functionality.
+## Фаза 1 — Стабилизация
 
-**Target bot (v4)** adds dedicated menus for all 10 roles with role-specific actions:
-- Director: portfolio, KPI, critical deviations, finance
-- PM: inbox/outbox, quick actions, project launch, design docs
-- OPR/KM/KMD (project sub-roles): inbox, send documents by type
-- Supply: inbox, send reports, purchase status, deficit
-- Production: inbox, send reports, load monitoring
-- Foreman: inbox, send reports, daily photo, stage photos
-- PTO: inbox, send AOSR docs, document registry
-- Inspector: inbox, send prescriptions, stage acceptance
+### 1. Подключить validateTelegram в webhook
 
-## Database Changes
+**Проблема:** Сейчас бот принимает любые POST-запросы без проверки подлинности.
 
-1. **Extend `app_role` enum** -- add `project_opr`, `project_km`, `project_kmd` values (the spec has 3 project sub-roles; current DB has just `project`)
-2. **Create `bot_inbox` table** -- stores inter-role messages/documents:
-   - `id`, `project_id`, `from_user_id`, `from_role`, `to_roles[]`, `type` (document, request, report, notification), `title`, `description`, `file_url`, `status` (new, read, processed), `created_at`
-3. **Create `bot_documents` table** -- tracks sent documents with FSM metadata:
-   - `id`, `project_id`, `sender_id`, `doc_type`, `file_url`, `comment`, `recipients`, `status`, `created_at`
+**Решение:**
+- В `serve()` (строка 1628) добавить проверку заголовка `x-telegram-bot-api-secret-token`
+- Если секрет не совпадает, возвращать 401
+- Секрет `TELEGRAM_WEBHOOK_SECRET` нужно будет задать и зарегистрировать через `setWebhook` API с параметром `secret_token`
+- Также использовать `validateInitDataAsync` из `_shared/validateTelegram.ts` для Mini App авторизации (если потребуется)
 
-## Implementation Plan
+### 2. Подключить rateLimit
 
-### Step 1 -- DB migration
-- Add new enum values to `app_role`
-- Create `bot_inbox` and `bot_documents` tables with RLS
-- Update `roleConfig.ts` to include new sub-roles
+**Проблема:** Нет защиты от спама — один пользователь может отправлять неограниченное количество запросов.
 
-### Step 2 -- Refactor role detection in bot
-Replace the current simple `isDirector/isPM/isForeman` checks with a comprehensive role resolver:
+**Решение:**
+- Импортировать `checkRateLimit` из `_shared/rateLimit.ts` в начало `handleUpdate`
+- Ограничение: 30 запросов / 60 секунд на `chatId`
+- При превышении — отправлять `tgAnswer` с текстом "Слишком много запросов" и выходить
 
-```text
-function detectPrimaryRole(roles: string[]): string
-  priority order: director > pm > project_opr > project_km > project_kmd
-                  > supply > production > foreman > pto > inspector
-```
+### 3. Фикс бага inbox для прорабов
 
-Each role maps to its dedicated `screen*Menu` function.
+**Проблема:** На строке 1584 inbox вызывается с ролью `"foreman"`, но в БД роли хранятся как `foreman1`, `foreman2`, `foreman3`. Функции `getInboxCount`/`getInboxItems` ищут `contains("to_roles", ["foreman"])` — совпадений нет.
 
-### Step 3 -- Add new screen functions
+**Решение:**
+- Изменить `screenInbox` на строке 1584: передавать массив ролей `["foreman", "foreman1", "foreman2", "foreman3"]`
+- Обновить `getInboxCount` и `getInboxItems` для поддержки нескольких ролей (использовать `.or()` фильтр)
+- Аналогично обновить `DOC_FSM_MAP` recipients — документы, адресованные `foreman1`, должны попадать во входящие любому прорабу
 
-For each role, implement:
-- `screen{Role}Menu` -- main hub with dynamic counters (inbox count, tasks, alerts)
-- `screen{Role}Inbox` -- list of incoming items from `bot_inbox`
-- `screen{Role}Send` -- category picker for outgoing documents/reports
+### 4. Увеличить TTL сессий до 8 часов
 
-Role-specific additions:
-- **Director**: `screenPortfolio`, `screenKPI`, `screenCritical`, `screenFinance`
-- **PM**: `screenPMSendLaunch`, `screenPMSendDesign`, `screenPMQuickActions`
-- **OPR**: `screenOPRSendSystem`, `screenOPRSendCalc`, `screenOPRSendNodes`, `screenOPRSendFacades`
-- **KM**: `screenKMSendDetail`, `screenKMSendSpec`, `screenKMSendVOR`, `screenKMSendTZ`
-- **KMD**: `screenKMDSendGeo`, `screenKMDSendBrackets`, `screenKMDSendKMD`, `screenKMDSendGlass`
-- **Supply**: `screenSupplyStatus`, `screenSupplyDeficit`, `screenSupplySendShipment`, `screenSupplySendMismatch`, `screenSupplySendTransport`
-- **Production**: `screenProdLoad`, `screenProdSendKP`, `screenProdSendAccept`, `screenProdSendWaybill`, `screenProdSendStock`
-- **Foreman**: `screenForemanSendTool`, `screenForemanSendDaily`, `screenForemanSendHidden`, `screenForemanSendIssue`, `screenForemanPhotoStage`
-- **PTO**: `screenPTORegistry`, `screenPTOSendAOSR` (brackets/frame/glass/schemes)
-- **Inspector**: `screenInspAccept`, `screenInspHistory`, `screenInspSendQuality`, `screenInspSendStop`, `screenInspSendPhoto`
+**Проблема:** Текущий TTL = 2 часа (строка 90: `7200000` мс). На стройке рабочий день длиннее.
 
-### Step 4 -- FSM document upload flow (universal)
+**Решение:**
+- Заменить `7200000` на `28800000` (8 часов) в `saveSession`
+- Обновить `cleanup_expired_bot_sessions` — функция уже работает корректно (чистит по `expires_at`)
 
-Shared FSM chain used by all "send" actions:
+### 5. Try/catch на все screen-функции
 
-```text
-SELECT_TYPE -> SELECT_RECIPIENTS -> UPLOAD_FILE -> ADD_COMMENT -> CONFIRM -> SENT
-```
+**Проблема:** Если любая screen-функция падает (ошибка БД, null-reference), пользователь видит "зависший" бот без ответа.
 
-States stored in `bot_sessions`. On SENT: insert into `bot_inbox` for recipients + trigger notifications.
+**Решение:**
+- Обернуть `handleUpdate` в try/catch с fallback-сообщением: "Произошла ошибка. Попробуйте /start"
+- Добавить обёртку `safeFn` для всех вызовов screen-функций в диспетчере
+- Логировать ошибку в `bot_audit_log` с `result: "error"`
 
-### Step 5 -- FSM photo report flow (foreman)
+---
 
-```text
-SELECT_FLOOR -> SELECT_FACADE -> UPLOAD_PHOTOS (up to 5) -> ADD_COMMENT -> CONFIRM -> SENT
-```
+## Фаза 2 — Рефакторинг
 
-### Step 6 -- Auto-triggers
+### 6. Разнести index.ts на модули
 
-Add trigger rules to `bot-notify-worker` that fire notifications based on events:
-- KMD ready -> notify PM + Production
-- Specification issued -> notify Supply + PM  
-- Shipment in 24h -> notify Production + PM
-- Material mismatch -> notify PM (critical)
-- Material deficit -> notify Supply + PM + Director (critical)
-- GPR delay > 2 days -> notify PM + Director
-- Task overdue -> notify initiator + PM
-- Work stop (inspector) -> notify PM + Director + Foreman (critical)
-- AOSR signed -> notify PM + Foreman
-- Photo report uploaded -> notify PM
+**Текущее состояние:** 1640 строк в одном файле.
 
-### Step 7 -- Callback dispatcher update
+**Ограничение Deno Edge Functions:** Нельзя использовать подпапки для одной функции, но можно импортировать из `_shared/`.
 
-Extend the callback routing in `handleUpdate` with new prefixes:
-- `opr:*`, `km:*`, `kmd:*` -- project sub-roles
-- `sup:*` -- supply
-- `prod:*` -- production
-- `pto:*` -- PTO
-- `insp:*` -- inspector
-- `inbox:*` -- universal inbox actions
-- `doc:*` -- document upload FSM
+**План разнесения:**
+- `_shared/botUtils.ts` — уже существует (tg API). Перенести туда `tgSend/tgEdit/tgAnswer/tgDeleteMsg` из index.ts (заменить дубликаты)
+- `_shared/botFSM.ts` — уже существует но устарел. Перенести туда `getSession/saveSession/clearSession` + типы `BotState`
+- `_shared/botScreens.ts` — уже существует но не используется v4. Перенести общие экраны: `screenProjectsList`, `screenDashboard`, `screenAlerts`, `screenSettings`, `screenTasks` и т.д.
+- `_shared/botRoleScreens.ts` — **новый файл**. Все ролевые меню и send-экраны (Director, PM, OPR, KM, KMD, Supply, Production, Foreman, PTO, Inspector)
+- `_shared/botDocFSM.ts` — **новый файл**. Document FSM + Photo FSM + `DOC_FSM_MAP`
+- `index.ts` — остаётся только диспетчер `handleUpdate` + `serve()` (~200 строк)
 
-### Step 8 -- Update roleConfig.ts
+### 7. Сохранение файлов в Supabase Storage
 
-Add `project_opr`, `project_km`, `project_kmd` to the tab permissions map.
+**Проблема:** Сейчас бот сохраняет временные ссылки Telegram (`https://api.telegram.org/file/bot.../...`). Эти ссылки протухают через ~1 час.
 
-## UX Rules (enforced)
-- Max 5 buttons per screen (never 4 in one row)
-- No double emojis, no CAPS, no trailing dots on buttons
-- Every screen includes a Mini App button
-- Breadcrumb-style header on each screen
-- Status messages auto-remove keyboard after 60 seconds
+**Решение:**
+- В `handleDocFile` и `handlePhotoFile` после получения `file_url` от TG:
+  1. Скачать файл через `fetch(fileUrl)`
+  2. Загрузить в bucket `project-documents` (уже существует, приватный) или `photo-reports` (для фото, публичный)
+  3. Сохранить постоянный URL из Storage в `bot_documents`/`bot_inbox`
+- Путь файла: `{project_id}/{doc_type}/{date}_{filename}`
 
-## File Changes Summary
-- `supabase/functions/telegram-bot/index.ts` -- major rewrite (~2000 lines)
-- `src/data/roleConfig.ts` -- add new sub-roles
-- DB migration -- new enum values + 2 new tables
+### 8. Проверка RLS-политик
 
-## Risks and Mitigations
-- **File size**: The bot file will be large (~2000+ lines). Could split into a shared module under `_shared/botScreensV4.ts`, but Deno edge functions work best with single-file entry points.
-- **Callback data length**: Telegram limits callback_data to 64 bytes. All callback strings stay under this limit using short prefixes.
-- **Backward compatibility**: Existing sessions with old states will gracefully fall back to role menus via the session expiry mechanism (2h TTL).
+**Текущее состояние по таблицам бота:**
+- `bot_sessions` — RLS OK (service_only для записи, auth для чтения)
+- `bot_documents` — RLS OK (service_only для записи, project-based для чтения)
+- `bot_inbox` — RLS OK (service_only для записи, project-based для чтения)
+- `bot_event_queue` — RLS OK (service_only)
+- `bot_audit_log` — RLS OK (service_only + pm/director чтение)
+
+Все таблицы бота используют `service_role_key` для записи, что корректно. Клиентский доступ ограничен чтением по проекту. **Дополнительных миграций не требуется.**
+
+---
+
+## Технические детали
+
+### Файлы, которые будут изменены:
+1. `supabase/functions/telegram-bot/index.ts` — основной рефакторинг (сокращение с 1640 до ~200 строк)
+2. `supabase/functions/_shared/botUtils.ts` — обновление (удалить старые хелперы, добавить v4)
+3. `supabase/functions/_shared/botFSM.ts` — полная перезапись под v4 сессии
+4. `supabase/functions/_shared/botScreens.ts` — полная перезапись (общие экраны v4)
+5. `supabase/functions/_shared/botRoleScreens.ts` — новый файл (ролевые экраны)
+6. `supabase/functions/_shared/botDocFSM.ts` — новый файл (FSM документов и фото)
+
+### Порядок выполнения:
+1. Сначала Фаза 1 (пункты 1-5) — быстрые фиксы в текущем index.ts
+2. Затем Фаза 2 (пункты 6-8) — рефакторинг с разнесением по модулям
+3. Деплой и проверка
+
+### Новый секрет:
+- `TELEGRAM_WEBHOOK_SECRET` — случайная строка для верификации webhook (пункт 1)
 
