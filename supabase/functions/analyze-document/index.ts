@@ -18,8 +18,8 @@ serve(async (req) => {
   }
 
   try {
-    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
+    const DO_MODEL_ACCESS_KEY = Deno.env.get("DO_MODEL_ACCESS_KEY");
+    if (!DO_MODEL_ACCESS_KEY) throw new Error("DO_MODEL_ACCESS_KEY is not configured");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -48,7 +48,8 @@ serve(async (req) => {
     }
     base64Content = btoa(base64Content);
 
-    const mimeType = file_path.endsWith(".pdf") ? "application/pdf" : "image/png";
+    const isPdf = file_path.toLowerCase().endsWith(".pdf");
+    const mimeType = isPdf ? "application/pdf" : file_path.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
 
     const systemPrompt = `Ты — эксперт по анализу строительной документации. Анализируй загруженный документ и извлекай:
 1. Тип документа (чертёж, спецификация, ведомость, акт и т.д.)
@@ -61,28 +62,24 @@ serve(async (req) => {
 
     const userPrompt = prompt || "Проанализируй этот документ. Извлеки все ключевые данные, таблицы и спецификации.";
 
-    // Call Claude API
-    const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
+    // Call DO OpenAI-compatible API
+    const response = await fetch("https://inference.do-ai.run/v1/chat/completions", {
       method: "POST",
       headers: {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
+        Authorization: `Bearer ${DO_MODEL_ACCESS_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 4096,
-        system: systemPrompt,
+        model: "openai-gpt-5-mini",
         messages: [
+          { role: "system", content: systemPrompt },
           {
             role: "user",
             content: [
               {
-                type: mimeType === "application/pdf" ? "document" : "image",
-                source: {
-                  type: "base64",
-                  media_type: mimeType,
-                  data: base64Content,
+                type: "image_url",
+                image_url: {
+                  url: `data:${mimeType};base64,${base64Content}`,
                 },
               },
               { type: "text", text: userPrompt },
@@ -92,14 +89,14 @@ serve(async (req) => {
       }),
     });
 
-    if (!claudeResponse.ok) {
-      const errText = await claudeResponse.text();
-      console.error("Claude API error:", claudeResponse.status, errText);
-      throw new Error(`Claude API error [${claudeResponse.status}]: ${errText}`);
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("AI API error:", response.status, errText);
+      throw new Error(`AI API error [${response.status}]: ${errText}`);
     }
 
-    const claudeData = await claudeResponse.json();
-    const analysisText = claudeData.content?.[0]?.text || "Анализ не удался";
+    const data = await response.json();
+    const analysisText = data.choices?.[0]?.message?.content || "Анализ не удался";
 
     // Save analysis to documents table if document_id provided
     if (document_id) {
