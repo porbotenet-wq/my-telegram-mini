@@ -938,7 +938,7 @@ async function screenForemanMenu(chatId: number, user: BotUser, session: any) {
   if (project) {
     text += `🏗️ ${project.name}\n`;
     const pf = await getTodayPlanFact(project.id);
-    const inboxCount = await getInboxCount(project.id, "foreman");
+    const inboxCount = await getInboxCount(project.id, ["foreman", "foreman1", "foreman2", "foreman3"]);
     text += pf.count > 0 ? `${progressBar(pf.pct)} <b>${pf.pct}%</b> сегодня\n` : `⚠️ <b>Отчёт за сегодня не подан</b>\n`;
     if (inboxCount > 0) text += `📥 Входящих: <b>${inboxCount}</b>\n`;
   }
