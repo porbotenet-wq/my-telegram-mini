@@ -1,7 +1,11 @@
 // src/components/Dashboard.tsx
 // MONOLITH v3.0 — Bento KPI grid with LED accents and kinetic typography
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
+
+const RiskCards = lazy(() => import("@/components/RiskCards"));
+const QuickActions = lazy(() => import("@/components/QuickActions"));
+const SyncPanel = lazy(() => import("@/components/SyncPanel"));
 
 interface DashboardProps {
   projectId: string;
@@ -111,7 +115,13 @@ const Dashboard = ({ projectId }: DashboardProps) => {
   const hasData = totalModulesPlan > 0 || facades.length > 0 || materials.length > 0;
 
   return (
-    <div className="p-4 space-y-4 animate-fade-in">
+    <div className="space-y-0 animate-fade-in">
+      {/* Risk Cards — horizontal scroll, above everything */}
+      <Suspense fallback={null}>
+        <RiskCards projectId={projectId} />
+      </Suspense>
+
+      <div className="p-4 space-y-4">
       {/* Empty state */}
       {!hasData && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -147,7 +157,14 @@ const Dashboard = ({ projectId }: DashboardProps) => {
           </div>
         </div>
       )}
+      </div>
 
+      {/* Quick Actions — 2×2 grid */}
+      <Suspense fallback={null}>
+        <QuickActions projectId={projectId} />
+      </Suspense>
+
+      <div className="p-4 space-y-4">
       {/* Facade grid */}
       {facades.length > 0 && (
         <div>
@@ -174,6 +191,15 @@ const Dashboard = ({ projectId }: DashboardProps) => {
           </div>
         </div>
       )}
+      </div>
+
+      {/* Sync Panel — 1С, Sheets, Telegram status */}
+      <Suspense fallback={null}>
+        <SyncPanel projectId={projectId} />
+      </Suspense>
+
+      {/* Bottom spacing for TabBar */}
+      <div className="h-4" />
     </div>
   );
 };
