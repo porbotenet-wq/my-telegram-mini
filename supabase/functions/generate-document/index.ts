@@ -423,8 +423,8 @@ async function generateTemplate(
 // ── AI Letter Generation ──
 
 async function generateLetterAI(params: Record<string, any>): Promise<string> {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) return params.body || "Текст письма не сгенерирован.";
+  const DO_MODEL_ACCESS_KEY = Deno.env.get("DO_MODEL_ACCESS_KEY");
+  if (!DO_MODEL_ACCESS_KEY) return params.body || "Текст письма не сгенерирован.";
 
   const tone = params.tone === "urgent" ? "срочном и настоятельном" : params.tone === "neutral" ? "нейтральном деловом" : "официальном";
   const recipient = params.template_type === "letter_client" ? "заказчику" : "субподрядчику";
@@ -444,14 +444,14 @@ async function generateLetterAI(params: Record<string, any>): Promise<string> {
 - Без приветствия и подписи (они уже есть)`;
 
   try {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const resp = await fetch("https://inference.do-ai.run/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${DO_MODEL_ACCESS_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "openai-gpt-5-mini",
         messages: [
           { role: "system", content: "Ты — опытный РП на стройке. Пишешь деловые письма кратко, по существу." },
           { role: "user", content: prompt },
