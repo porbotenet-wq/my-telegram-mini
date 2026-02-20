@@ -161,7 +161,7 @@ async function screenProjectsList(chatId: number, user: BotUser, session: any) {
   let text = `📋 <b>Ваши проекты</b>\n${SEP}\n`;
   if (projects.length === 0) {
     text += "Нет активных проектов";
-    await sendOrEdit(chatId, session, user.user_id, text, [[{ text: "🚀 Открыть приложение", url: APP_URL }]]);
+    await sendOrEdit(chatId, session, user.user_id, text, [[{ text: "🚀 Открыть приложение", web_app: { url: APP_URL } }]]);
     return;
   }
   for (const p of projects) {
@@ -209,7 +209,7 @@ async function screenDirectorMenu(chatId: number, user: BotUser, session: any) {
     [{ text: "📦 Снабжение", callback_data: "d:supply" }, { text: "🏗️ Фасады", callback_data: "d:facades" }],
     [{ text: "📝 Согласования", callback_data: "d:approvals" }, { text: "📋 Журналы", callback_data: "d:logs" }],
     [{ text: "📂 Сменить проект", callback_data: "proj:list" }, { text: "⚙️ Настройки", callback_data: "c:settings" }],
-    [{ text: "🚀 Открыть приложение", url: APP_URL }],
+    [{ text: "🚀 Открыть приложение", web_app: { url: APP_URL } }],
   ];
   await sendOrEdit(chatId, session, user.user_id, text, buttons, "IDLE", ctx);
 }
@@ -273,7 +273,7 @@ async function screenSupply(chatId: number, user: BotUser, session: any) {
   }
   const rp = rolePrefix(user.roles);
   await tgEdit(chatId, session.message_id, text, { inline_keyboard: [
-    [{ text: "🚀 Снабжение в приложении", url: APP_URL }],
+    [{ text: "🚀 Снабжение в приложении", web_app: { url: APP_URL } }],
     [{ text: "← Меню", callback_data: `${rp}:menu` }],
   ] });
 }
@@ -398,7 +398,7 @@ async function screenDailyLogs(chatId: number, user: BotUser, session: any) {
   if (isForeman(user.roles)) {
     buttons.push([{ text: "📝 Новая запись", callback_data: "log:new" }]);
   }
-  buttons.push([{ text: "🚀 Журналы в приложении", url: APP_URL }]);
+  buttons.push([{ text: "🚀 Журналы в приложении", web_app: { url: APP_URL } }]);
   buttons.push([{ text: "← Меню", callback_data: `${rp}:menu` }]);
   await tgEdit(chatId, session.message_id, text, { inline_keyboard: buttons });
 }
@@ -506,7 +506,7 @@ async function screenPMMenu(chatId: number, user: BotUser, session: any) {
     [{ text: "📝 Согласования", callback_data: "pm:approvals" }, { text: "📋 Журналы", callback_data: "pm:logs" }],
     [{ text: "✏️ Новый алерт", callback_data: "pm:alert_new" }],
     [{ text: "📂 Сменить проект", callback_data: "proj:list" }, { text: "⚙️ Настройки", callback_data: "c:settings" }],
-    [{ text: "🚀 Открыть приложение", url: APP_URL }],
+    [{ text: "🚀 Открыть приложение", web_app: { url: APP_URL } }],
   ];
   await sendOrEdit(chatId, session, user.user_id, text, buttons, "IDLE", ctx);
 }
@@ -528,7 +528,7 @@ async function screenTasks(chatId: number, user: BotUser, session: any) {
   }
   const rp = rolePrefix(user.roles);
   await tgEdit(chatId, session.message_id, text, { inline_keyboard: [
-    [{ text: "🚀 Все задачи в приложении", url: APP_URL }],
+    [{ text: "🚀 Все задачи в приложении", web_app: { url: APP_URL } }],
     [{ text: "← Меню", callback_data: `${rp}:menu` }],
   ] });
 }
@@ -551,7 +551,7 @@ async function screenForemanMenu(chatId: number, user: BotUser, session: any) {
     [{ text: "📊 Мой прогресс", callback_data: "f:progress" }, { text: "🔔 Алерты", callback_data: "f:alerts" }],
     [{ text: "📋 Задачи", callback_data: "f:tasks" }, { text: "📋 Журнал", callback_data: "f:logs" }],
     [{ text: "📂 Сменить проект", callback_data: "proj:list" }, { text: "⚙️ Настройки", callback_data: "c:settings" }],
-    [{ text: "🚀 Открыть приложение", url: APP_URL }],
+    [{ text: "🚀 Открыть приложение", web_app: { url: APP_URL } }],
   ];
   await sendOrEdit(chatId, session, user.user_id, text, buttons, "IDLE", ctx);
 }
@@ -705,7 +705,7 @@ async function saveAlert(chatId: number, user: BotUser, session: any, title: str
 // ══════════════════════════════════════════════════════════════
 async function screenUnknownUser(chatId: number, firstName: string) {
   await tgSend(chatId, `👋 <b>Добро пожаловать, ${firstName}!</b>\n${SEP}\nЭто внутренний бот STSphera.\n\nВаш Telegram не привязан к аккаунту.\nВойдите в приложение → ⚙️ Настройки → привяжите Telegram.\n\nВаш Chat ID: <code>${chatId}</code>`,
-    { inline_keyboard: [[{ text: "🚀 Открыть STSphera", url: APP_URL }]] });
+    { inline_keyboard: [[{ text: "🚀 Открыть STSphera", web_app: { url: APP_URL } }]] });
 }
 
 // ══════════════════════════════════════════════════════════════
