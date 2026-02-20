@@ -2574,6 +2574,23 @@ export type Database = {
         Returns: Json
       }
       refresh_portfolio_stats: { Args: never; Returns: undefined }
+      search_norm_chunks: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          chunk_id: string
+          content: string
+          document_code: string
+          document_id: string
+          document_title: string
+          score: number
+          section: string
+          source_url: string
+        }[]
+      }
       seed_project_folders: {
         Args: { p_project_id: string }
         Returns: undefined
