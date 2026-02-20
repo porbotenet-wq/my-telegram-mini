@@ -921,15 +921,20 @@ async function handleUpdate(update: any) {
     const user = await getUser(chatId);
     const session = user ? await getSession(chatId) : null;
 
-    // /start, /menu
+    // /start, /menu — полный перезапуск бота
     if (text.startsWith("/start") || text.startsWith("/menu")) {
       if (!user) { await screenUnknownUser(chatId, firstName); return; }
       await tgDeleteMsg(chatId, msg.message_id);
-      if (isDirector(user.roles)) return screenDirectorMenu(chatId, user, session);
-      if (isPM(user.roles)) return screenPMMenu(chatId, user, session);
-      if (isForeman(user.roles)) return screenForemanMenu(chatId, user, session);
-      // Other roles — show a generic menu with workflow access
-      return screenGenericMenu(chatId, user, session);
+      // Удаляем старое сообщение бота и сбрасываем сессию
+      if (session?.message_id) {
+        await tgDeleteMsg(chatId, session.message_id);
+      }
+      await clearSession(chatId);
+      const freshSession = null;
+      if (isDirector(user.roles)) return screenDirectorMenu(chatId, user, freshSession);
+      if (isPM(user.roles)) return screenPMMenu(chatId, user, freshSession);
+      if (isForeman(user.roles)) return screenForemanMenu(chatId, user, freshSession);
+      return screenGenericMenu(chatId, user, freshSession);
     }
 
     // /help
