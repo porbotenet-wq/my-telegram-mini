@@ -36,6 +36,8 @@ const TelegramSettings = lazy(() => import("@/components/TelegramSettings"));
 const ProfilePage = lazy(() => import("@/components/ProfilePage"));
 const TeamPage = lazy(() => import("@/components/TeamPage"));
 const ProjectMenu = lazy(() => import("@/components/ProjectMenu"));
+const ChatsPage = lazy(() => import("@/components/ChatsPage"));
+const AIChatPage = lazy(() => import("@/components/AIChatPage"));
 
 // ── Типы ─────────────────────────────────────────────────
 type Screen = "projects" | "create" | "project" | "director";
@@ -202,6 +204,8 @@ const Index = () => {
       case "profile":  return <ProfilePage projectId={pid} />;
       case "team":     return <TeamPage projectId={pid} />;
       case "menu":     return <ProjectMenu projectId={pid} projectName={projectName} userRole={userRole} onTabChange={setActiveTab} onBackToProjects={() => setScreen(isDirector ? "director" : "projects")} />;
+      case "chats":    return <ChatsPage projectId={pid} />;
+      case "ai-chat":  return <AIChatPage projectId={pid} projectName={projectName} userRole={userRole} onBack={() => setActiveTab("menu")} />;
       default:        return <DashboardRouter projectId={pid} />;
     }
   };

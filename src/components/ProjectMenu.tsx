@@ -7,7 +7,7 @@ import {
   Users, Package, FolderOpen, Briefcase, BarChart3, DollarSign,
   AlertOctagon, ShoppingCart, Truck, PenTool, Calculator, GitBranch,
   Table, ClipboardCheck, Book, Bot, Settings, ChevronRight, Plus,
-  Building2
+  Building2, MessageCircle
 } from "lucide-react";
 
 interface ProjectMenuProps {
@@ -169,9 +169,10 @@ const ProjectMenu = ({ projectId, projectName, userRole, onTabChange, onBackToPr
   };
 
   const GENERAL_ITEMS = [
+    { tab: "chats", icon: MessageCircle, label: "Обсуждения", desc: "Telegram-чаты проекта" },
     { tab: "cal", icon: Calendar, label: "Календарь", desc: "События и дедлайны" },
     { tab: "docs", icon: FolderOpen, label: "Документы", desc: "Все документы проекта" },
-    { tab: "ai", icon: Bot, label: "AI-помощник", desc: "Спросить AI" },
+    { tab: "ai-chat", icon: Bot, label: "AI-помощник", desc: "Спросить AI" },
     { tab: "settings", icon: Settings, label: "Настройки", desc: "Настройки проекта" },
   ];
 
