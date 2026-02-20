@@ -1,5 +1,5 @@
 // src/components/TopBar.tsx
-// SMR — полностью переписан
+// MONOLITH v3.0 — Command center top bar, frosted concrete surface
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import TelegramChats from "@/components/TelegramChats";
@@ -36,13 +36,13 @@ const TopBar = ({ projectName, projectId, onBackToProjects, extraActions }: TopB
   }, []);
 
   return (
-    <div className="sticky top-0 z-50 bg-[hsl(var(--bg0)/0.88)] backdrop-blur-[20px] border-b border-border px-3.5 py-2.5 flex items-center justify-between">
-      {/* Левая часть: логотип + объект */}
-      <div className="flex items-center gap-2 min-w-0">
+    <div className="sticky top-0 z-50 h-14 bg-[hsl(var(--bg0)/0.85)] backdrop-blur-[20px] border-b border-border px-4 flex items-center justify-between">
+      {/* Left: back + brand + project */}
+      <div className="flex items-center gap-2.5 min-w-0">
         {onBackToProjects && (
           <button
             onClick={onBackToProjects}
-            className="text-muted-foreground text-[11px] hover:text-primary transition-colors mr-1 flex-shrink-0"
+            className="w-9 h-9 rounded-[10px] bg-bg2 border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-all duration-150 active:scale-[0.97] flex-shrink-0"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -50,57 +50,52 @@ const TopBar = ({ projectName, projectId, onBackToProjects, extraActions }: TopB
           </button>
         )}
 
-        {/* SMR логотип */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <div className="w-6 h-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center">
-            <span className="text-primary font-mono text-[10px] font-bold">S</span>
+        {/* Brand mark */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="w-7 h-7 rounded-[10px] bg-[hsl(var(--green-dim))] border border-primary/20 flex items-center justify-center">
+            <span className="text-primary font-mono text-[11px] font-bold">S</span>
           </div>
-          <span className="text-[13px] font-bold tracking-tight">SMR</span>
+          <div className="flex flex-col">
+            <span className="text-[14px] font-bold tracking-tight leading-none">СФЕРА</span>
+            {projectName && (
+              <span className="text-[10px] text-t3 truncate max-w-[120px] leading-tight mt-0.5">
+                {projectName}
+              </span>
+            )}
+          </div>
         </div>
-
-        {/* Разделитель + название объекта */}
-        {projectName && (
-          <>
-            <span className="text-[hsl(var(--t3))] text-[10px] mx-0.5">·</span>
-            <span className="text-[12px] text-muted-foreground truncate max-w-[140px]">
-              {projectName}
-            </span>
-          </>
-        )}
       </div>
 
-      {/* Правая часть */}
+      {/* Right: actions + live + user */}
       <div className="flex items-center gap-2 flex-shrink-0">
-        {/* Дополнительные действия */}
         {extraActions && extraActions.map((action) => (
           <button
             key={action.label}
             onClick={action.onClick}
             title={action.label}
-            className="w-7 h-7 rounded-full bg-[hsl(var(--bg2))] border border-border flex items-center justify-center text-[12px] hover:border-primary/40 transition-all"
+            className="w-9 h-9 rounded-[10px] bg-bg2 border border-border flex items-center justify-center text-[13px] hover:border-primary/30 transition-all duration-150 active:scale-[0.97]"
           >
             {action.icon}
           </button>
         ))}
-        {/* LIVE индикатор */}
-        <div className="flex items-center gap-1.5">
-          <div className="w-[6px] h-[6px] rounded-full bg-primary shadow-[0_0_8px_hsl(158_88%_40%/0.3)] animate-pulse-dot" />
-          <span className="font-mono text-[10px] text-muted-foreground">{time}</span>
+
+        {/* LIVE indicator */}
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-bg2/50">
+          <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--green-glow))] animate-pulse-dot" />
+          <span className="font-mono text-[10px] text-t2">{time}</span>
         </div>
 
         {projectId && <TelegramChats projectId={projectId} />}
 
-        {/* Имя пользователя */}
         {displayName && (
-          <span className="text-[10px] text-muted-foreground truncate max-w-[70px] hidden sm:block">
+          <span className="text-[10px] text-t3 truncate max-w-[60px] hidden sm:block">
             {displayName}
           </span>
         )}
 
-        {/* Выход */}
         <button
           onClick={signOut}
-          className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
+          className="w-9 h-9 rounded-[10px] bg-bg2 border border-border flex items-center justify-center text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-all duration-150 active:scale-[0.97]"
           title="Выйти"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

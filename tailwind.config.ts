@@ -59,14 +59,20 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Custom СИТИ 4 semantic colors
+        // MONOLITH surface tokens
         bg0: "hsl(var(--bg0))",
         bg1: "hsl(var(--bg1))",
         bg2: "hsl(var(--bg2))",
         bg3: "hsl(var(--bg3))",
+        // MONOLITH text tokens
         t1: "hsl(var(--t1))",
         t2: "hsl(var(--t2))",
         t3: "hsl(var(--t3))",
+        // MONOLITH signal colors
+        green: "hsl(var(--green))",
+        red: "hsl(var(--red))",
+        amber: "hsl(var(--amber))",
+        blue: "hsl(var(--blue))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
