@@ -189,6 +189,27 @@ function formatMessage(eventType: string, payload: Record<string, unknown>): str
       return msg;
     }
 
+    case "morning.briefing":
+      return String(payload.text || "☀️ Утренняя сводка");
+
+    case "task.deadline_warning":
+      return `⏰ <b>Дедлайн через ${payload.hours_left || 2}ч!</b>\n` +
+             `«${payload.task_name || ""}»\n` +
+             `Срок: ${payload.deadline || ""}\n` +
+             `Объект: ${payload.project_name || ""}`;
+
+    case "docs.overdue":
+      return `📨 <b>Документы без ответа > 24ч</b>\n` +
+             `Всего: ${payload.total_count || 0}\n` +
+             `${payload.message || ""}`;
+
+    case "stage.ready":
+      return `🏗️ <b>Готовность к приёмке</b>\n` +
+             `Прораб ${payload.foreman_name || ""} отметил готовность:\n` +
+             `${payload.facade_name || ""} / ${payload.stage || ""}\n` +
+             `Объект: ${payload.project_name || ""}\n` +
+             `Требуется приёмка!`;
+
     default:
       return `📌 <b>STSphera</b>\n${payload.message || "Новое уведомление"}`;
   }
