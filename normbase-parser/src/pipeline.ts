@@ -3,7 +3,7 @@ import { supabase } from './db/supabase.js';
 import { SEED_DOCUMENTS } from './seed-documents.js';
 import { crawlCntd } from './crawlers/cntd.js';
 import { chunkDocument } from './chunker/index.js';
-import { getEmbeddings } from './embeddings/index.js';
+import { runLocalEmbeddings } from './embeddings/index.js';
 
 async function seedDocuments() {
   console.log(`\n=== Seeding ${SEED_DOCUMENTS.length} documents ===\n`);
@@ -103,50 +103,8 @@ async function crawlAndParse() {
 }
 
 async function embedChunks() {
-  console.log(`\n=== Embedding parsed documents ===\n`);
-
-  const { data: docs, error } = await supabase
-    .from('norm_documents')
-    .select('id, code')
-    .eq('status', 'parsed');
-
-  if (error || !docs?.length) {
-    console.log('[embed] No parsed documents to embed');
-    return;
-  }
-
-  for (const doc of docs) {
-    console.log(`\n--- Embedding ${doc.code} ---`);
-
-    const { data: chunks } = await supabase
-      .from('norm_chunks')
-      .select('id, content')
-      .eq('document_id', doc.id)
-      .is('embedding', null)
-      .order('chunk_index');
-
-    if (!chunks?.length) {
-      console.log(`[embed] ${doc.code}: no chunks to embed`);
-      continue;
-    }
-
-    const texts = chunks.map(c => c.content);
-    const embeddings = await getEmbeddings(texts);
-
-    for (let i = 0; i < chunks.length; i++) {
-      await supabase
-        .from('norm_chunks')
-        .update({ embedding: embeddings[i] as any })
-        .eq('id', chunks[i].id);
-    }
-
-    await supabase
-      .from('norm_documents')
-      .update({ status: 'embedded', updated_at: new Date().toISOString() })
-      .eq('id', doc.id);
-
-    console.log(`[embed] ${doc.code}: ${chunks.length} chunks embedded`);
-  }
+  console.log(`\n=== Embedding via local fastembed (multilingual-e5-small, 384 dims) ===\n`);
+  runLocalEmbeddings();
 }
 
 async function main() {

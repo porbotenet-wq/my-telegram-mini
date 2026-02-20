@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>СФЕРА — Главный экран TMA</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  :root {
+    --bg-deep: #0a0b0d;
+    --bg-card: #131519;
+    --bg-card-hover: #1a1d23;
+    --bg-glass: rgba(255,255,255,0.03);
+    --border: rgba(255,255,255,0.06);
+    --border-accent: rgba(255,255,255,0.1);
+    --t1: #f0f0f2;
+    --t2: #8b8d95;
+    --t3: #55575e;
+    --red: #ef4444;
+    --red-glow: rgba(239,68,68,0.15);
+    --amber: #f59e0b;
+    --amber-glow: rgba(245,158,11,0.12);
+    --green: #22c55e;
+    --green-glow: rgba(34,197,94,0.12);
+    --blue: #3b82f6;
+    --blue-glow: rgba(59,130,246,0.12);
+    --cyan: #06b6d4;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg-deep);
+    color: var(--t1);
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .screen { max-width: 390px; margin: 0 auto; padding: 0 0 100px; }
+
+  /* Header */
+  .header {
+    padding: 16px 16px 12px;
+    background: linear-gradient(180deg, rgba(10,11,13,0.95) 0%, rgba(10,11,13,0.8) 100%);
+    backdrop-filter: blur(20px);
+    position: sticky; top: 0; z-index: 10;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-top { display: flex; align-items: center; justify-content: space-between; }
+  .logo { display: flex; align-items: center; gap: 8px; }
+  .logo-mark {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border: 1px solid var(--border-accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 800; color: var(--cyan);
+  }
+  .logo-text { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+  .logo-sub { font-size: 9px; color: var(--t3); text-transform: uppercase; letter-spacing: 1.5px; margin-top: 1px; }
+  .sync-badge {
+    display: flex; align-items: center; gap: 5px;
+    padding: 5px 10px; border-radius: 20px;
+    background: var(--green-glow); border: 1px solid rgba(34,197,94,0.2);
+    font-size: 9px; font-weight: 600; color: var(--green);
+  }
+  .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+  /* Section */
+  .section { padding: 0 16px; margin-top: 16px; }
+  .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--t3); }
+  .section-action { font-size: 10px; color: var(--blue); font-weight: 600; cursor: pointer; }
+
+  /* Risk cards */
+  .risk-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x mandatory; }
+  .risk-scroll::-webkit-scrollbar { display: none; }
+  .risk-card {
+    flex: 0 0 280px; scroll-snap-align: start;
+    border-radius: 14px; padding: 14px 16px;
+    border: 1px solid; position: relative; overflow: hidden;
+  }
+  .risk-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  }
+  .risk-critical { background: var(--bg-card); border-color: rgba(239,68,68,0.15); }
+  .risk-critical::before { background: var(--red); }
+  .risk-warning { background: var(--bg-card); border-color: rgba(245,158,11,0.12); }
+  .risk-warning::before { background: var(--amber); }
+  .risk-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+    padding: 3px 8px; border-radius: 4px; margin-bottom: 8px;
+  }
+  .tag-critical { background: var(--red-glow); color: var(--red); }
+  .tag-warning { background: var(--amber-glow); color: var(--amber); }
+  .risk-title { font-size: 13px; font-weight: 700; line-height: 1.3; margin-bottom: 4px; }
+  .risk-desc { font-size: 11px; color: var(--t2); line-height: 1.4; }
+  .risk-meta { display: flex; gap: 12px; margin-top: 10px; }
+  .risk-meta-item { font-size: 9px; color: var(--t3); display: flex; align-items: center; gap: 3px; }
+
+  /* KPI Grid */
+  .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .kpi {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px; position: relative; overflow: hidden;
+  }
+  .kpi::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  }
+  .kpi-green::before { background: var(--green); }
+  .kpi-amber::before { background: var(--amber); }
+  .kpi-blue::before { background: var(--blue); }
+  .kpi-red::before { background: var(--red); }
+  .kpi-label { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--t3); margin-bottom: 6px; }
+  .kpi-value { font-size: 24px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+  .kpi-sub { font-size: 10px; color: var(--t2); margin-top: 4px; }
+
+  /* Photo capture */
+  .photo-btn {
+    width: 100%; min-height: 56px;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    background: linear-gradient(135deg, rgba(239,68,68,0.12) 0%, rgba(239,68,68,0.06) 100%);
+    border: 1px solid rgba(239,68,68,0.2); border-radius: 14px;
+    color: var(--red); font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: all 0.15s;
+    letter-spacing: -0.2px;
+  }
+  .photo-btn:active { transform: scale(0.97); background: rgba(239,68,68,0.2); }
+  .photo-icon { font-size: 20px; }
+
+  /* 1C Sync */
+  .sync-panel {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px 16px;
+  }
+  .sync-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
+  .sync-row + .sync-row { border-top: 1px solid var(--border); }
+  .sync-label { font-size: 12px; font-weight: 600; }
+  .sync-status { display: flex; align-items: center; gap: 6px; }
+  .sync-indicator {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+  .sync-ok { background: var(--green); box-shadow: 0 0 8px var(--green-glow); }
+  .sync-warn { background: var(--amber); box-shadow: 0 0 8px var(--amber-glow); }
+  .sync-err { background: var(--red); box-shadow: 0 0 8px var(--red-glow); }
+  .sync-time { font-size: 10px; color: var(--t3); }
+
+  /* Progress bars */
+  .progress-track { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.04); overflow: hidden; margin-top: 8px; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+
+  /* Bottom nav hint */
+  .bottom-safe { height: 34px; }
+</style>
+</head>
+<body>
+<div class="screen">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-top">
+      <div class="logo">
+        <div class="logo-mark">С</div>
+        <div>
+          <div class="logo-text">СФЕРА</div>
+          <div class="logo-sub">Управление объектами</div>
+        </div>
+      </div>
+      <div class="sync-badge">
+        <div class="sync-dot"></div>
+        1С Online
+      </div>
+    </div>
+  </div>
+
+  <!-- CRITICAL RISKS -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">⚡ Критические риски</div>
+      <div class="section-action">Все →</div>
+    </div>
+    <div class="risk-scroll">
+      <div class="risk-card risk-critical">
+        <div class="risk-tag tag-critical">● Критично</div>
+        <div class="risk-title">Срыв поставки кронштейнов Ф-3</div>
+        <div class="risk-desc">Поставщик «МеталлГрупп» — задержка 6 дней. Монтаж НВФ блокирован на 3-5 этажах.</div>
+        <div class="risk-meta">
+          <div class="risk-meta-item">📍 ЖК Речной, корп. 2</div>
+          <div class="risk-meta-item">⏱ Дедлайн: 22.02</div>
+        </div>
+      </div>
+      <div class="risk-card risk-warning">
+        <div class="risk-tag tag-warning">● Внимание</div>
+        <div class="risk-title">Отклонение план/факт: герметизация</div>
+        <div class="risk-desc">Факт 340 м.п. при плане 520 м.п. Отставание 35%. Бригада Иванова — нехватка людей.</div>
+        <div class="risk-meta">
+          <div class="risk-meta-item">📍 БЦ Горизонт</div>
+          <div class="risk-meta-item">⏱ Неделя 8/16</div>
+        </div>
+      </div>
+      <div class="risk-card risk-critical">
+        <div class="risk-tag tag-critical">● Критично</div>
+        <div class="risk-title">Конфликт ПТО ↔ площадка</div>
+        <div class="risk-desc">Расхождение в спецификации алюминиевых профилей. Монтаж приостановлен до согласования.</div>
+        <div class="risk-meta">
+          <div class="risk-meta-item">📍 ТЦ Кристалл</div>
+          <div class="risk-meta-item">⏱ Простой: 2 дня</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">📊 Сводка по портфелю</div>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi kpi-green">
+        <div class="kpi-label">Модули СПК</div>
+        <div class="kpi-value" style="color:var(--green)">1 247</div>
+        <div class="kpi-sub">из 2 100 шт</div>
+        <div class="progress-track"><div class="progress-fill" style="width:59%;background:var(--green)"></div></div>
+      </div>
+      <div class="kpi kpi-amber">
+        <div class="kpi-label">Кронштейны</div>
+        <div class="kpi-value" style="color:var(--amber)">3 840</div>
+        <div class="kpi-sub">из 6 200 компл</div>
+        <div class="progress-track"><div class="progress-fill" style="width:62%;background:var(--amber)"></div></div>
+      </div>
+      <div class="kpi kpi-blue">
+        <div class="kpi-label">Герметизация</div>
+        <div class="kpi-value" style="color:var(--blue)">860</div>
+        <div class="kpi-sub">из 1 400 м.п.</div>
+        <div class="progress-track"><div class="progress-fill" style="width:61%;background:var(--blue)"></div></div>
+      </div>
+      <div class="kpi kpi-red">
+        <div class="kpi-label">Дефицит</div>
+        <div class="kpi-value" style="color:var(--red)">4</div>
+        <div class="kpi-sub">позиций</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHOTO CAPTURE -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">📸 Фотофиксация</div>
+      <div class="section-action">История →</div>
+    </div>
+    <button class="photo-btn" onclick="alert('Камера: выбор объекта → фото → тег нарушения → отправка')">
+      <span class="photo-icon">📷</span>
+      Зафиксировать нарушение
+    </button>
+  </div>
+
+  <!-- 1C SYNC -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">🔄 Обмен с 1С</div>
+    </div>
+    <div class="sync-panel">
+      <div class="sync-row">
+        <div class="sync-label">Материалы</div>
+        <div class="sync-status">
+          <div class="sync-indicator sync-ok"></div>
+          <div class="sync-time">2 мин назад</div>
+        </div>
+      </div>
+      <div class="sync-row">
+        <div class="sync-label">Поставки</div>
+        <div class="sync-status">
+          <div class="sync-indicator sync-ok"></div>
+          <div class="sync-time">5 мин назад</div>
+        </div>
+      </div>
+      <div class="sync-row">
+        <div class="sync-label">Акты выполненных работ</div>
+        <div class="sync-status">
+          <div class="sync-indicator sync-warn"></div>
+          <div class="sync-time">Ожидание: 3 акта</div>
+        </div>
+      </div>
+      <div class="sync-row">
+        <div class="sync-label">Табель / выработка</div>
+        <div class="sync-status">
+          <div class="sync-indicator sync-err"></div>
+          <div class="sync-time">Ошибка: таймаут</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-safe"></div>
+</div>
+</body>
+</html>

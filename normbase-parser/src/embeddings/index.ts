@@ -1,37 +1,15 @@
-// Embeddings via OpenAI API (text-embedding-3-small, 1536 dims)
-import OpenAI from 'openai';
+// Embeddings — local via Python fastembed (multilingual-e5-small, 384 dims)
+// Run: python3 src/embed_local.py
+// This module is kept for potential future OpenAI integration
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+import { execSync } from 'child_process';
+import path from 'path';
 
-const MODEL = 'text-embedding-3-small';
-const BATCH_SIZE = 20;
-const DELAY_MS = 500;
-
-export async function getEmbeddings(texts: string[]): Promise<number[][]> {
-  const allEmbeddings: number[][] = [];
-
-  for (let i = 0; i < texts.length; i += BATCH_SIZE) {
-    const batch = texts.slice(i, i + BATCH_SIZE);
-    console.log(`[embed] Batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(texts.length / BATCH_SIZE)}`);
-
-    const response = await openai.embeddings.create({
-      model: MODEL,
-      input: batch,
-    });
-
-    for (const item of response.data) {
-      allEmbeddings.push(item.embedding);
-    }
-
-    if (i + BATCH_SIZE < texts.length) {
-      await new Promise(r => setTimeout(r, DELAY_MS));
-    }
-  }
-
-  return allEmbeddings;
-}
-
-export async function getEmbedding(text: string): Promise<number[]> {
-  const [embedding] = await getEmbeddings([text]);
-  return embedding;
+export function runLocalEmbeddings(): void {
+  const scriptPath = path.join(import.meta.dirname, 'embed_local.py');
+  console.log('[embed] Running local embeddings via fastembed...');
+  execSync(`python3 ${scriptPath}`, {
+    cwd: path.join(import.meta.dirname, '..'),
+    stdio: 'inherit',
+  });
 }

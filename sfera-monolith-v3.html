@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>СФЕРА — MONOLITH v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════
+   MONOLITH v3 — Concrete & Light
+   Design System for СФЕРА TMA
+   ═══════════════════════════════════════════ */
+
+:root {
+  /* Surfaces — 4 depth levels */
+  --bg0: #0a0c0f;
+  --bg1: #12151a;
+  --bg2: #1a1e25;
+  --bg3: #242930;
+
+  /* Text — 3 levels only */
+  --t1: #dde1e8;
+  --t2: #7a8194;
+  --t3: #4a5060;
+
+  /* Signal colors — LED accents */
+  --green: #00c978;
+  --green-dim: rgba(0,201,120,0.10);
+  --green-glow: rgba(0,201,120,0.25);
+
+  --red: #e5453a;
+  --red-dim: rgba(229,69,58,0.10);
+  --red-glow: rgba(229,69,58,0.30);
+
+  --amber: #f0a030;
+  --amber-dim: rgba(240,160,48,0.10);
+  --amber-glow: rgba(240,160,48,0.20);
+
+  --blue: #4d8ef7;
+  --blue-dim: rgba(77,142,247,0.10);
+
+  /* Borders */
+  --border: rgba(255,255,255,0.06);
+  --border-active: rgba(255,255,255,0.12);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+html {
+  font-family: 'Manrope', -apple-system, sans-serif;
+  background: var(--bg0);
+  color: var(--t1);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  max-width: 430px;
+  margin: 0 auto;
+  min-height: 100vh;
+  position: relative;
+  padding-bottom: 80px;
+}
+
+/* Ambient light layer — subtle top glow */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 430px;
+  height: 400px;
+  background: radial-gradient(ellipse 70% 35% at 50% -5%, rgba(0,201,120,0.04), transparent);
+  pointer-events: none;
+  z-index: 0;
+  transition: background 1.5s ease;
+}
+
+/* Noise texture overlay for concrete feel */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.015'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.4;
+}
+
+/* ─── ANIMATIONS ─── */
+@keyframes pulse-live {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes progress-fill {
+  from { width: 0; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-in {
+  animation: fade-up 0.3s ease both;
+}
+
+/* Staggered entrance */
+.delay-1 { animation-delay: 0.05s; }
+.delay-2 { animation-delay: 0.10s; }
+.delay-3 { animation-delay: 0.15s; }
+.delay-4 { animation-delay: 0.20s; }
+.delay-5 { animation-delay: 0.25s; }
+.delay-6 { animation-delay: 0.30s; }
+
+/* ─── TOP BAR ─── */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: rgba(10,12,15,0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.live-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green-glow);
+  animation: pulse-live 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.topbar-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.topbar-sub {
+  font-size: 10px;
+  color: var(--t3);
+  font-weight: 500;
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.icon-btn {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.icon-btn:active {
+  transform: scale(0.94);
+  background: var(--bg3);
+  border-color: var(--border-active);
+}
+
+.icon-btn svg {
+  width: 18px; height: 18px;
+  stroke: var(--t2);
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icon-btn .badge-dot {
+  position: absolute;
+  top: 6px; right: 6px;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 4px var(--red-glow);
+}
+
+/* ─── SECTION ─── */
+.section {
+  padding: 0 16px;
+  margin-top: 20px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.section-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--t3);
+}
+
+.section-action {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--t3);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.section-action:active { color: var(--t2); }
+
+/* ─── RISK CARDS — horizontal scroll ─── */
+.risk-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 16px 4px;
+  margin: 0 -16px;
+  scrollbar-width: none;
+}
+.risk-scroll::-webkit-scrollbar { display: none; }
+
+.risk-card {
+  flex: 0 0 272px;
+  scroll-snap-align: start;
+  background: var(--bg1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.risk-card:active {
+  transform: scale(0.98);
+  border-color: var(--border-active);
+}
+
+/* LED strip on top */
+.risk-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+.risk-card.critical::before {
+  background: linear-gradient(90deg, var(--red), var(--red) 60%, transparent);
+  box-shadow: 0 0 12px var(--red-glow);
+}
+
+.risk-card.warning::before {
+  background: linear-gradient(90deg, var(--amber), var(--amber) 60%, transparent);
+}
+
+.risk-card.info::before {
+  background: linear-gradient(90deg, var(--blue), var(--blue) 60%, transparent);
+}
+
+.risk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 3px 8px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.risk-badge.critical {
+  background: var(--red-dim);
+  color: var(--red);
+}
+
+.risk-badge.warning {
+  background: var(--amber-dim);
+  color: var(--amber);
+}
+
+.risk-badge.info {
+  background: var(--blue-dim);
+  color: var(--blue);
+}
+
+.risk-title {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  margin-bottom: 4px;
+}
+
+.risk-desc {
+  font-size: 11px;
+  color: var(--t2);
+  line-height: 1.45;
+  margin-bottom: 10px;
+}
+
+.risk-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 10px;
+  color: var(--t3);
+}
+
+.risk-meta svg {
+  width: 12px; height: 12px;
+  stroke: var(--t3);
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  margin-right: 3px;
+  vertical-align: -1px;
+}
+
+/* ─── KPI GRID — 2×2 bento ─── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.kpi-card {
+  background: var(--bg1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  min-height: 88px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.kpi-card:active {
+  transform: scale(0.97);
+  border-color: var(--border-active);
+}
+
+/* Left accent bar */
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 12px; bottom: 12px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+}
+
+.kpi-card.green::before { background: var(--green); }
+.kpi-card.red::before { background: var(--red); box-shadow: 0 0 8px var(--red-glow); }
+.kpi-card.amber::before { background: var(--amber); }
+.kpi-card.blue::before { background: var(--blue); }
+
+.kpi-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--t3);
+  margin-bottom: 6px;
+  padding-left: 8px;
+}
+
+.kpi-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  padding-left: 8px;
+  margin-bottom: 4px;
+}
+
+.kpi-card.green .kpi-value { color: var(--green); }
+.kpi-card.red .kpi-value { color: var(--red); }
+.kpi-card.amber .kpi-value { color: var(--amber); }
+.kpi-card.blue .kpi-value { color: var(--blue); }
+
+.kpi-sub {
+  font-size: 10px;
+  color: var(--t3);
+  padding-left: 8px;
+}
+
+/* ─── PROGRESS SECTION ─── */
+.progress-block {
+  background: var(--bg1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.progress-row {
+  margin-bottom: 14px;
+}
+
+.progress-row:last-child { margin-bottom: 0; }
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.progress-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--t1);
+}
+
+.progress-pct {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-track {
+  height: 6px;
+  background: var(--bg3);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  position: relative;
+  animation: progress-fill 0.8s cubic-bezier(0.4,0,0.2,1) both;
+}
+
+/* Highlight tip on fill end */
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 24px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15));
+  border-radius: 0 3px 3px 0;
+}
+
+.progress-fill.green { background: var(--green); }
+.progress-fill.amber { background: var(--amber); }
+.progress-fill.red { background: var(--red); }
+.progress-fill.blue { background: var(--blue); }
+
+.progress-stats {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 9px;
+  color: var(--t3);
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-stats .delta {
+  color: var(--green);
+}
+
+/* ─── QUICK ACTIONS — 2×2 grid ─── */
+.actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.action-card {
+  background: var(--bg1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.action-card:active {
+  transform: scale(0.97);
+  background: var(--bg2);
+  border-color: var(--border-active);
+}
+
+.action-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.action-icon svg {
+  width: 20px; height: 20px;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.action-title {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.action-sub {
+  font-size: 9px;
+  color: var(--t3);
+  margin-top: 1px;
+}
+
+/* ─── FACADE GRID — 4 columns ─── */
+.facade-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.facade-cell {
+  background: var(--bg1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 6px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.facade-cell:active {
+  transform: scale(0.95);
+  border-color: var(--border-active);
+}
+
+/* Active facade — LED top strip + gradient */
+.facade-cell.active::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--green);
+}
+
+.facade-cell.active::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 40px;
+  background: linear-gradient(180deg, rgba(0,201,120,0.06), transparent);
+  pointer-events: none;
+}
+
+.facade-code {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--t2);
+  margin-bottom: 4px;
+}
+
+.facade-cell.active .facade-code { color: var(--green); }
+
+.facade-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.facade-unit {
+  font-size: 10px;
+  color: var(--t3);
+  font-weight: 500;
+}
+
+.facade-badge {
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.facade-badge.good { background: var(--green-dim); color: var(--green); }
+.facade-badge.mid { background: var(--amber-dim); color: var(--amber); }
+.facade-badge.low { background: var(--red-dim); color: var(--red); }
+.facade-badge.none { background: var(--bg3); color: var(--t3); }
+
+/* ─── SYNC PANEL ─── */
+.sync-panel {
+  background: var(--bg1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.sync-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sync-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg2);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+}
+
+.sync-row:last-child { margin-bottom: 0; }
+
+.sync-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.sync-left svg {
+  width: 14px; height: 14px;
+  stroke: var(--t2);
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sync-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.sync-badge.synced { background: var(--green-dim); color: var(--green); }
+.sync-badge.pending { background: var(--amber-dim); color: var(--amber); }
+
+/* ─── TAB BAR ─── */
+.tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 430px;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  height: 64px;
+  background: rgba(10,12,15,0.94);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top: 1px solid var(--border);
+  padding-bottom: max(4px, env(safe-area-inset-bottom));
+  z-index: 50;
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 56px;
+  padding: 6px 12px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease;
+}
+
+.tab:active { transform: scale(0.92); }
+
+.tab svg {
+  width: 22px; height: 22px;
+  stroke: var(--t3);
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke 0.15s;
+}
+
+.tab span {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--t3);
+  transition: color 0.15s;
+}
+
+.tab.active svg { stroke: var(--green); }
+.tab.active span { color: var(--green); }
+
+.tab-badge {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--red);
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 6px var(--red-glow);
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ TOP BAR ═══ -->
+<div class="topbar animate-in">
+  <div class="topbar-left">
+    <div class="live-dot"></div>
+    <div>
+      <div class="topbar-title">ЖК «Речной»</div>
+      <div class="topbar-sub">Корпус 3 · Секция А-В</div>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <div class="icon-btn">
+      <svg viewBox="0 0 24 24"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35"/></svg>
+    </div>
+    <div class="icon-btn">
+      <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <div class="badge-dot"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CRITICAL RISKS ═══ -->
+<div class="section animate-in delay-1">
+  <div class="section-header">
+    <span class="section-label">Критические риски</span>
+    <span class="section-action">Все →</span>
+  </div>
+</div>
+
+<div class="risk-scroll animate-in delay-2">
+  <div style="width:16px;flex-shrink:0"></div>
+
+  <div class="risk-card critical">
+    <div class="risk-badge critical">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+      Критично
+    </div>
+    <div class="risk-title">Дефицит профиля ТП-60</div>
+    <div class="risk-desc">Остаток 340 п.м. — хватит на 2 дня. Поставщик задерживает отгрузку на 5 дней.</div>
+    <div class="risk-meta">
+      <span><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Срок: 22.02</span>
+      <span><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Логистика</span>
+    </div>
+  </div>
+
+  <div class="risk-card warning">
+    <div class="risk-badge warning">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Внимание
+    </div>
+    <div class="risk-title">Отставание монтажа 3 этаж</div>
+    <div class="risk-desc">Факт 67% при плане 82%. Бригада Петрова — нехватка 2 монтажников.</div>
+    <div class="risk-meta">
+      <span><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Дедлайн: 28.02</span>
+      <span><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Бригада №3</span>
+    </div>
+  </div>
+
+  <div class="risk-card info">
+    <div class="risk-badge info">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      Инфо
+    </div>
+    <div class="risk-title">Акт КС-2 на согласовании</div>
+    <div class="risk-desc">Январь, корпус 3. Ожидает подпись технадзора 3-й день.</div>
+    <div class="risk-meta">
+      <span><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Отправлен: 17.02</span>
+      <span><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>ПТО</span>
+    </div>
+  </div>
+
+  <div style="width:16px;flex-shrink:0"></div>
+</div>
+
+<!-- ═══ KPI ═══ -->
+<div class="section animate-in delay-3">
+  <div class="section-header">
+    <span class="section-label">Показатели объекта</span>
+    <span class="section-action">Детали →</span>
+  </div>
+  <div class="kpi-grid">
+    <div class="kpi-card red">
+      <div class="kpi-label">Замечания</div>
+      <div class="kpi-value">14</div>
+      <div class="kpi-sub">+3 за сегодня</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Готовность</div>
+      <div class="kpi-value">73%</div>
+      <div class="kpi-sub">план 78%</div>
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-label">На объекте</div>
+      <div class="kpi-value">42</div>
+      <div class="kpi-sub">из 56 по плану</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Фотоотчёты</div>
+      <div class="kpi-value">8</div>
+      <div class="kpi-sub">за последние 24ч</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PROGRESS ═══ -->
+<div class="section animate-in delay-4">
+  <div class="section-header">
+    <span class="section-label">Прогресс работ</span>
+  </div>
+  <div class="progress-block">
+
+    <div class="progress-row">
+      <div class="progress-header">
+        <span class="progress-name">СПК — остекление</span>
+        <span class="progress-pct" style="color:var(--green)">74%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill green" style="width:74%"></div>
+      </div>
+      <div class="progress-stats">
+        <span>1 247 / 1 680 м²</span>
+        <span class="delta">+24 сегодня</span>
+      </div>
+    </div>
+
+    <div class="progress-row">
+      <div class="progress-header">
+        <span class="progress-name">НВФ — облицовка</span>
+        <span class="progress-pct" style="color:var(--amber)">51%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill amber" style="width:51%"></div>
+      </div>
+      <div class="progress-stats">
+        <span>1 632 / 3 200 м²</span>
+        <span class="delta">+18 сегодня</span>
+      </div>
+    </div>
+
+    <div class="progress-row">
+      <div class="progress-header">
+        <span class="progress-name">Алюминий — витражи</span>
+        <span class="progress-pct" style="color:var(--red)">38%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill red" style="width:38%"></div>
+      </div>
+      <div class="progress-stats">
+        <span>456 / 1 200 м²</span>
+        <span class="delta">+6 сегодня</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ QUICK ACTIONS ═══ -->
+<div class="section animate-in delay-5">
+  <div class="section-header">
+    <span class="section-label">Быстрые действия</span>
+  </div>
+  <div class="actions-grid">
+
+    <div class="action-card">
+      <div class="action-icon" style="background:var(--red-dim)">
+        <svg viewBox="0 0 24 24" style="stroke:var(--red)"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </div>
+      <div class="action-text">
+        <div class="action-title">Фотофиксация</div>
+        <div class="action-sub">Нарушение / дефект</div>
+      </div>
+    </div>
+
+    <div class="action-card">
+      <div class="action-icon" style="background:var(--amber-dim)">
+        <svg viewBox="0 0 24 24" style="stroke:var(--amber)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      </div>
+      <div class="action-text">
+        <div class="action-title">Дневной отчёт</div>
+        <div class="action-sub">Заполнить за 20.02</div>
+      </div>
+    </div>
+
+    <div class="action-card">
+      <div class="action-icon" style="background:var(--green-dim)">
+        <svg viewBox="0 0 24 24" style="stroke:var(--green)"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <div class="action-text">
+        <div class="action-title">Персонал</div>
+        <div class="action-sub">42 на объекте</div>
+      </div>
+    </div>
+
+    <div class="action-card">
+      <div class="action-icon" style="background:var(--blue-dim)">
+        <svg viewBox="0 0 24 24" style="stroke:var(--blue)"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      </div>
+      <div class="action-text">
+        <div class="action-title">AI-анализ</div>
+        <div class="action-sub">Документы и чертежи</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ FACADES GRID ═══ -->
+<div class="section animate-in delay-5">
+  <div class="section-header">
+    <span class="section-label">Фасады — монтаж</span>
+    <span class="section-action">Карта →</span>
+  </div>
+  <div class="facade-grid">
+    <div class="facade-cell active">
+      <div class="facade-code">Ф-01</div>
+      <div class="facade-value">96<span class="facade-unit">%</span></div>
+      <div class="facade-badge good">Готов</div>
+    </div>
+    <div class="facade-cell active">
+      <div class="facade-code">Ф-02</div>
+      <div class="facade-value">84<span class="facade-unit">%</span></div>
+      <div class="facade-badge good">В работе</div>
+    </div>
+    <div class="facade-cell">
+      <div class="facade-code">Ф-03</div>
+      <div class="facade-value">51<span class="facade-unit">%</span></div>
+      <div class="facade-badge mid">Отстаёт</div>
+    </div>
+    <div class="facade-cell">
+      <div class="facade-code">Ф-04</div>
+      <div class="facade-value">38<span class="facade-unit">%</span></div>
+      <div class="facade-badge low">Критично</div>
+    </div>
+    <div class="facade-cell">
+      <div class="facade-code">Ф-05</div>
+      <div class="facade-value">22<span class="facade-unit">%</span></div>
+      <div class="facade-badge low">Критично</div>
+    </div>
+    <div class="facade-cell">
+      <div class="facade-code">Ф-06</div>
+      <div class="facade-value">0<span class="facade-unit">%</span></div>
+      <div class="facade-badge none">Не начат</div>
+    </div>
+    <div class="facade-cell active">
+      <div class="facade-code">Ф-07</div>
+      <div class="facade-value">78<span class="facade-unit">%</span></div>
+      <div class="facade-badge good">В работе</div>
+    </div>
+    <div class="facade-cell">
+      <div class="facade-code">Ф-08</div>
+      <div class="facade-value">45<span class="facade-unit">%</span></div>
+      <div class="facade-badge mid">Отстаёт</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 1С SYNC PANEL ═══ -->
+<div class="section animate-in delay-6">
+  <div class="section-header">
+    <span class="section-label">Обмен данными</span>
+  </div>
+  <div class="sync-panel">
+    <div class="sync-header">
+      <div class="sync-status">
+        <div class="live-dot" style="width:6px;height:6px"></div>
+        <span style="color:var(--green);font-size:11px;font-weight:600">Подключено</span>
+      </div>
+      <span style="font-size:9px;color:var(--t3);font-family:'JetBrains Mono',monospace">09:31 UTC</span>
+    </div>
+
+    <div class="sync-row">
+      <div class="sync-left">
+        <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        <span>1С: Материалы</span>
+      </div>
+      <span class="sync-badge synced">Синхр.</span>
+    </div>
+
+    <div class="sync-row">
+      <div class="sync-left">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span>1С: Акты КС-2</span>
+      </div>
+      <span class="sync-badge synced">Синхр.</span>
+    </div>
+
+    <div class="sync-row">
+      <div class="sync-left">
+        <svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        <span>Google Sheets</span>
+      </div>
+      <span class="sync-badge pending">Ожидание</span>
+    </div>
+
+    <div class="sync-row">
+      <div class="sync-left">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Telegram Bot</span>
+      </div>
+      <span class="sync-badge synced">Активен</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB BAR ═══ -->
+<div class="tabbar">
+  <div class="tab active">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <span>Сводка</span>
+  </div>
+  <div class="tab">
+    <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+    <span>Объекты</span>
+  </div>
+  <div class="tab">
+    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span>Команда</span>
+  </div>
+  <div class="tab has-badge">
+    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    <span>Чат</span>
+    <div class="tab-badge">3</div>
+  </div>
+</div>
+
+</body>
+</html>

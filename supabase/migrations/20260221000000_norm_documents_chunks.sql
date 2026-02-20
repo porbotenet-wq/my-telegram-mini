@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS norm_chunks (
   chunk_index int NOT NULL,
   content text NOT NULL,
   section_title text,
-  embedding vector(1536),
+  embedding vector(384),
   token_count int,
   metadata jsonb DEFAULT '{}',
   created_at timestamptz DEFAULT now()
@@ -43,7 +43,7 @@ CREATE POLICY "norm_chunks_read" ON norm_chunks FOR SELECT TO authenticated USIN
 
 -- Search function
 CREATE OR REPLACE FUNCTION match_norm_chunks(
-  query_embedding vector(1536),
+  query_embedding vector(384),
   match_threshold float DEFAULT 0.7,
   match_count int DEFAULT 10,
   filter_category text DEFAULT NULL,
