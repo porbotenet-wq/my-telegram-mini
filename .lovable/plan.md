@@ -1,109 +1,129 @@
 
 
-# STSphera v3.0 — Холдинг + 1C Синхронизация + White-Label Бот
+# Telegram Bot v4 -- Full Role-Based Architecture
 
-## Обзор
+## Overview
 
-Три крупных блока:
-1. **Holding Migration** — мультикомпанийный режим (таблица `companies`, `company_id` во всех основных таблицах, RLS-изоляция)
-2. **sync-1c** — Edge Function для двусторонней синхронизации с 1С
-3. **bot-whitelabel** — Edge Function для white-label ботов (один код, N компаний)
+Rewrite the Telegram bot to implement the complete screen architecture from the specification: 10 distinct roles, each with dedicated menus, "Incoming" (inbox) and "Send" screens, FSM document/photo flows, and auto-trigger notifications.
 
----
+## Current State vs Target
 
-## Этап 1: Секреты
+**Current bot (v3)** has 4 role paths: Director, PM, Foreman, Generic. All other roles (supply, production, pto, inspector, project) fall into the generic menu with limited functionality.
 
-Для `sync-1c` нужны секреты: `C1_BASE_URL`, `C1_USERNAME`, `C1_PASSWORD`.
-Для `bot-whitelabel` нужен: `WEBHOOK_SECRET`.
+**Target bot (v4)** adds dedicated menus for all 10 roles with role-specific actions:
+- Director: portfolio, KPI, critical deviations, finance
+- PM: inbox/outbox, quick actions, project launch, design docs
+- OPR/KM/KMD (project sub-roles): inbox, send documents by type
+- Supply: inbox, send reports, purchase status, deficit
+- Production: inbox, send reports, load monitoring
+- Foreman: inbox, send reports, daily photo, stage photos
+- PTO: inbox, send AOSR docs, document registry
+- Inspector: inbox, send prescriptions, stage acceptance
 
-Запрошу у пользователя эти секреты (или пропустим, если пока нет 1С-сервера).
+## Database Changes
 
----
+1. **Extend `app_role` enum** -- add `project_opr`, `project_km`, `project_kmd` values (the spec has 3 project sub-roles; current DB has just `project`)
+2. **Create `bot_inbox` table** -- stores inter-role messages/documents:
+   - `id`, `project_id`, `from_user_id`, `from_role`, `to_roles[]`, `type` (document, request, report, notification), `title`, `description`, `file_url`, `status` (new, read, processed), `created_at`
+3. **Create `bot_documents` table** -- tracks sent documents with FSM metadata:
+   - `id`, `project_id`, `sender_id`, `doc_type`, `file_url`, `comment`, `recipients`, `status`, `created_at`
 
-## Этап 2: Database Migration — Holding
+## Implementation Plan
 
-SQL-миграция создаст:
+### Step 1 -- DB migration
+- Add new enum values to `app_role`
+- Create `bot_inbox` and `bot_documents` tables with RLS
+- Update `roleConfig.ts` to include new sub-roles
 
-- **Таблица `companies`** — юрлица холдинга с полями `bot_token`, `bot_username`, `mini_app_url`, `primary_color`, `holding_id` (рекурсивная структура)
-- **`company_id`** добавляется к таблицам: `projects`, `profiles`, `user_roles`, `alerts`, `materials`, `orders`, `plan_fact`, `crews`, `bot_sessions`
-- **Колонка `scope`** в `user_roles` (`company` / `holding`)
-- **Функции RLS**:
-  - `current_company_id()` — ID компании текущего пользователя
-  - `is_holding_director()` — проверка холдингового директора
-  - `accessible_company_ids()` — массив доступных company_id
-- **RLS-политики** с изоляцией по компании для `projects`, `alerts`, `materials`
-- **View `holding_portfolio`** — сводка по компаниям холдинга
+### Step 2 -- Refactor role detection in bot
+Replace the current simple `isDirector/isPM/isForeman` checks with a comprehensive role resolver:
 
----
-
-## Этап 3: Database Migration — v3 (1C sync tables)
-
-- **Таблица `sync_log`** — логи синхронизации с 1С
-- **Колонки в `materials`**: `updated_from_1c`, `synced_to_1c`
-- **Колонки в `plan_fact`**: `ref_1c`, `synced_to_1c`
-- **Колонки в `alerts`**: `synced_to_1c`
-- **Индексы производительности**: по `company_id+status`, дефициту, нерешённым алертам
-- **Функция `cleanup_sync_log()`** — очистка старых записей
-
----
-
-## Этап 4: Edge Function `sync-1c`
-
-Создать `supabase/functions/sync-1c/index.ts`:
-- **1C -> App**: материалы, заказы, план работ
-- **App -> 1C**: факт выполнения, алерты (critical/high), статусы заказов
-- Логирование в `sync_log`
-- REST-клиент для 1C с Basic Auth
-
----
-
-## Этап 5: Edge Function `bot-whitelabel`
-
-Создать `supabase/functions/bot-whitelabel/index.ts`:
-- Один endpoint для всех ботов компаний
-- Идентификация компании по `X-Telegram-Bot-Api-Secret-Token` header / `X-Bot-Token` / `?company=CODE`
-- Кеш компаний в памяти (5 мин TTL)
-- Брендированное меню, dashboard по `company_id`
-- Делегация FSM-состояний в `telegram-bot`
-- Добавить в `config.toml`: `verify_jwt = false`
-
----
-
-## Этап 6: Config.toml
-
-Добавить записи:
 ```text
-[functions.sync-1c]
-verify_jwt = false
-
-[functions.bot-whitelabel]
-verify_jwt = false
+function detectPrimaryRole(roles: string[]): string
+  priority order: director > pm > project_opr > project_km > project_kmd
+                  > supply > production > foreman > pto > inspector
 ```
 
----
+Each role maps to its dedicated `screen*Menu` function.
 
-## Этап 7: Обновить TypeScript-типы
+### Step 3 -- Add new screen functions
 
-Типы обновятся автоматически после миграций.
+For each role, implement:
+- `screen{Role}Menu` -- main hub with dynamic counters (inbox count, tasks, alerts)
+- `screen{Role}Inbox` -- list of incoming items from `bot_inbox`
+- `screen{Role}Send` -- category picker for outgoing documents/reports
 
----
+Role-specific additions:
+- **Director**: `screenPortfolio`, `screenKPI`, `screenCritical`, `screenFinance`
+- **PM**: `screenPMSendLaunch`, `screenPMSendDesign`, `screenPMQuickActions`
+- **OPR**: `screenOPRSendSystem`, `screenOPRSendCalc`, `screenOPRSendNodes`, `screenOPRSendFacades`
+- **KM**: `screenKMSendDetail`, `screenKMSendSpec`, `screenKMSendVOR`, `screenKMSendTZ`
+- **KMD**: `screenKMDSendGeo`, `screenKMDSendBrackets`, `screenKMDSendKMD`, `screenKMDSendGlass`
+- **Supply**: `screenSupplyStatus`, `screenSupplyDeficit`, `screenSupplySendShipment`, `screenSupplySendMismatch`, `screenSupplySendTransport`
+- **Production**: `screenProdLoad`, `screenProdSendKP`, `screenProdSendAccept`, `screenProdSendWaybill`, `screenProdSendStock`
+- **Foreman**: `screenForemanSendTool`, `screenForemanSendDaily`, `screenForemanSendHidden`, `screenForemanSendIssue`, `screenForemanPhotoStage`
+- **PTO**: `screenPTORegistry`, `screenPTOSendAOSR` (brackets/frame/glass/schemes)
+- **Inspector**: `screenInspAccept`, `screenInspHistory`, `screenInspSendQuality`, `screenInspSendStop`, `screenInspSendPhoto`
 
-## Технические детали
+### Step 4 -- FSM document upload flow (universal)
 
-### Порядок миграций (критично):
-1. Сначала `companies` (т.к. остальные таблицы ссылаются на неё)
-2. Затем `company_id` в существующих таблицах
-3. Затем функции RLS (`current_company_id`, `accessible_company_ids`)
-4. Затем политики RLS
-5. Затем `sync_log` и колонки синхронизации
-6. View `holding_portfolio`
+Shared FSM chain used by all "send" actions:
 
-### Существующие RLS-политики:
-Текущие политики (`projects_sel`, `alerts_sel` и т.д.) используют `user_project_ids()`. Новые политики с `company_id` будут добавлены **параллельно** (не заменяя), чтобы обеспечить обратную совместимость пока `company_id` не заполнен.
+```text
+SELECT_TYPE -> SELECT_RECIPIENTS -> UPLOAD_FILE -> ADD_COMMENT -> CONFIRM -> SENT
+```
 
-### Известные зависимости:
-- Таблица `orders` уже существует — миграция добавит только недостающие колонки (`synced_to_1c`, `updated_from_1c`, `supplier_name`)
-- `materials.code_1c` уже существует — пропустим
-- `materials.price_per_unit`, `supplier_inn`, `supplier_code_1c` уже существуют — пропустим
-- Секреты `C1_BASE_URL`, `C1_USERNAME`, `C1_PASSWORD`, `WEBHOOK_SECRET` — нужно запросить у пользователя
+States stored in `bot_sessions`. On SENT: insert into `bot_inbox` for recipients + trigger notifications.
+
+### Step 5 -- FSM photo report flow (foreman)
+
+```text
+SELECT_FLOOR -> SELECT_FACADE -> UPLOAD_PHOTOS (up to 5) -> ADD_COMMENT -> CONFIRM -> SENT
+```
+
+### Step 6 -- Auto-triggers
+
+Add trigger rules to `bot-notify-worker` that fire notifications based on events:
+- KMD ready -> notify PM + Production
+- Specification issued -> notify Supply + PM  
+- Shipment in 24h -> notify Production + PM
+- Material mismatch -> notify PM (critical)
+- Material deficit -> notify Supply + PM + Director (critical)
+- GPR delay > 2 days -> notify PM + Director
+- Task overdue -> notify initiator + PM
+- Work stop (inspector) -> notify PM + Director + Foreman (critical)
+- AOSR signed -> notify PM + Foreman
+- Photo report uploaded -> notify PM
+
+### Step 7 -- Callback dispatcher update
+
+Extend the callback routing in `handleUpdate` with new prefixes:
+- `opr:*`, `km:*`, `kmd:*` -- project sub-roles
+- `sup:*` -- supply
+- `prod:*` -- production
+- `pto:*` -- PTO
+- `insp:*` -- inspector
+- `inbox:*` -- universal inbox actions
+- `doc:*` -- document upload FSM
+
+### Step 8 -- Update roleConfig.ts
+
+Add `project_opr`, `project_km`, `project_kmd` to the tab permissions map.
+
+## UX Rules (enforced)
+- Max 5 buttons per screen (never 4 in one row)
+- No double emojis, no CAPS, no trailing dots on buttons
+- Every screen includes a Mini App button
+- Breadcrumb-style header on each screen
+- Status messages auto-remove keyboard after 60 seconds
+
+## File Changes Summary
+- `supabase/functions/telegram-bot/index.ts` -- major rewrite (~2000 lines)
+- `src/data/roleConfig.ts` -- add new sub-roles
+- DB migration -- new enum values + 2 new tables
+
+## Risks and Mitigations
+- **File size**: The bot file will be large (~2000+ lines). Could split into a shared module under `_shared/botScreensV4.ts`, but Deno edge functions work best with single-file entry points.
+- **Callback data length**: Telegram limits callback_data to 64 bytes. All callback strings stay under this limit using short prefixes.
+- **Backward compatibility**: Existing sessions with old states will gracefully fall back to role menus via the session expiry mechanism (2h TTL).
 
