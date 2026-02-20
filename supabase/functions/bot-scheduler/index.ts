@@ -269,6 +269,126 @@ async function triggerWeeklyAI(): Promise<boolean> {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// 07:00 МСК — Утренний план (по аналогии с GS-скриптом)
+// ═══════════════════════════════════════════════════════════════
+async function scheduleMorningPlan(projects: any[]): Promise<number> {
+  let queued = 0;
+  const today = todayMSK();
+
+  for (const proj of projects) {
+    if (await alreadyQueued("plan.morning", proj.id)) continue;
+
+    // Собираем план на сегодня из plan_fact
+    const { data: planRows } = await db.from("plan_fact")
+      .select("plan_value, fact_value, facade_id, floor_id, work_type_id, crew_id, notes")
+      .eq("project_id", proj.id)
+      .eq("date", today)
+      .gt("plan_value", 0);
+
+    if (!planRows?.length) continue;
+
+    // Группировка по фасадам
+    const facadeIds = [...new Set(planRows.map((r: any) => r.facade_id).filter(Boolean))];
+    const facadeMap: Record<string, string> = {};
+    if (facadeIds.length > 0) {
+      const { data: facades } = await db.from("facades").select("id, name").in("id", facadeIds);
+      for (const f of (facades || [])) facadeMap[f.id] = f.name;
+    }
+
+    let totalPlan = 0;
+    const grouped: Record<string, number> = {};
+    for (const r of planRows) {
+      const facadeName = facadeMap[r.facade_id] || "Без фасада";
+      grouped[facadeName] = (grouped[facadeName] || 0) + Number(r.plan_value || 0);
+      totalPlan += Number(r.plan_value || 0);
+    }
+
+    await db.from("bot_event_queue").insert({
+      event_type:   "plan.morning",
+      target_roles: ["pm", "director", "foreman1", "foreman2", "foreman3"],
+      project_id:   proj.id,
+      priority:     "normal",
+      payload: {
+        project_name: proj.name,
+        date:         today,
+        total_plan:   totalPlan,
+        rows_count:   planRows.length,
+        by_facade:    grouped,
+      },
+      scheduled_at: new Date().toISOString(),
+    });
+    queued++;
+  }
+  return queued;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 20:00 МСК — Вечерний факт (по аналогии с GS-скриптом)
+// ═══════════════════════════════════════════════════════════════
+async function scheduleEveningFact(projects: any[]): Promise<number> {
+  let queued = 0;
+  const today = todayMSK();
+
+  for (const proj of projects) {
+    if (await alreadyQueued("fact.evening", proj.id)) continue;
+
+    const { data: rows } = await db.from("plan_fact")
+      .select("plan_value, fact_value, facade_id, notes")
+      .eq("project_id", proj.id)
+      .eq("date", today);
+
+    if (!rows?.length) continue;
+
+    const facadeIds = [...new Set(rows.map((r: any) => r.facade_id).filter(Boolean))];
+    const facadeMap: Record<string, string> = {};
+    if (facadeIds.length > 0) {
+      const { data: facades } = await db.from("facades").select("id, name").in("id", facadeIds);
+      for (const f of (facades || [])) facadeMap[f.id] = f.name;
+    }
+
+    let totalPlan = 0, totalFact = 0;
+    const byFacade: Record<string, { plan: number; fact: number }> = {};
+    const failures: Array<{ facade: string; deficit: number; note: string }> = [];
+
+    for (const r of rows) {
+      const plan = Number(r.plan_value || 0);
+      const fact = Number(r.fact_value || 0);
+      const facadeName = facadeMap[r.facade_id] || "Без фасада";
+      totalPlan += plan;
+      totalFact += fact;
+      if (!byFacade[facadeName]) byFacade[facadeName] = { plan: 0, fact: 0 };
+      byFacade[facadeName].plan += plan;
+      byFacade[facadeName].fact += fact;
+
+      if (fact < plan && r.notes) {
+        failures.push({ facade: facadeName, deficit: plan - fact, note: r.notes });
+      }
+    }
+
+    const pct = totalPlan > 0 ? Math.round((totalFact / totalPlan) * 100) : 0;
+
+    await db.from("bot_event_queue").insert({
+      event_type:   "fact.evening",
+      target_roles: ["pm", "director"],
+      project_id:   proj.id,
+      priority:     pct < 80 ? "high" : "normal",
+      payload: {
+        project_name: proj.name,
+        date:         today,
+        total_plan:   totalPlan,
+        total_fact:   totalFact,
+        pct,
+        by_facade:    byFacade,
+        failures,
+      },
+      scheduled_at: new Date().toISOString(),
+    });
+    queued++;
+  }
+  return queued;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // MAIN
 // ═══════════════════════════════════════════════════════════════
 serve(async () => {
@@ -279,6 +399,11 @@ serve(async () => {
   const projects = await getActiveProjects();
   if (!projects.length) {
     return new Response(JSON.stringify({ ...results, status: "no_active_projects" }));
+  }
+
+  // 07:00 — утренний план
+  if (hour === 7) {
+    results.morning_plan = await scheduleMorningPlan(projects);
   }
 
   // 08:00 — дайджест директора
@@ -299,6 +424,11 @@ serve(async () => {
     if (day === 5) {
       results.weekly_ai = await triggerWeeklyAI();
     }
+  }
+
+  // 20:00 — вечерний факт
+  if (hour === 20) {
+    results.evening_fact = await scheduleEveningFact(projects);
   }
 
   results.status = "ok";

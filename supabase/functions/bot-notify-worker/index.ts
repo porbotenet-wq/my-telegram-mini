@@ -146,6 +146,49 @@ function formatMessage(eventType: string, payload: Record<string, unknown>): str
              `+${payload.value || 0} мод. (${payload.pct || 0}%)\n` +
              `Объект: ${payload.project_name || ""}`;
 
+    case "plan.morning": {
+      let msg = `📋 <b>ПЛАН НА ${payload.date || "сегодня"}</b>\n━━━━━━━━━━━━━━━━━━━━\n`;
+      msg += `Объект: ${payload.project_name || ""}\n\n`;
+      const byFacade = (payload.by_facade || {}) as Record<string, number>;
+      for (const [facade, plan] of Object.entries(byFacade)) {
+        msg += `🏗️ <b>${facade}</b>: ${plan} ед.\n`;
+      }
+      msg += `\n━━━━━━━━━━━━━━━━━━━━\n📊 <b>Итого:</b> ${payload.total_plan || 0} ед. (${payload.rows_count || 0} позиций)`;
+      return msg;
+    }
+
+    case "fact.evening": {
+      const pct = Number(payload.pct || 0);
+      const status = pct >= 100 ? "✅" : pct >= 80 ? "🟡" : "🔴";
+      let msg = `📊 <b>ФАКТ ЗА ${payload.date || "сегодня"}</b>\n━━━━━━━━━━━━━━━━━━━━\n`;
+      msg += `Объект: ${payload.project_name || ""}\n\n`;
+      const byFacade = (payload.by_facade || {}) as Record<string, { plan: number; fact: number }>;
+      for (const [facade, vals] of Object.entries(byFacade)) {
+        const fp = vals.plan > 0 ? Math.round((vals.fact / vals.plan) * 100) : 0;
+        const fi = fp >= 100 ? "✅" : fp >= 80 ? "🟡" : "🔴";
+        msg += `${fi} <b>${facade}</b>: ${vals.fact}/${vals.plan} (${fp}%)\n`;
+      }
+      msg += `\n━━━━━━━━━━━━━━━━━━━━\n${status} <b>ИТОГО:</b> ${payload.total_fact || 0}/${payload.total_plan || 0} ед. (${pct}%)\n`;
+      const failures = (payload.failures || []) as Array<{ facade: string; deficit: number; note: string }>;
+      if (failures.length > 0) {
+        msg += `\n⚠️ <b>СРЫВЫ:</b>\n`;
+        for (const f of failures) {
+          msg += `• ${f.facade}: -${f.deficit} ед.\n  📍 ${f.note}\n`;
+        }
+      }
+      return msg;
+    }
+
+    case "director.digest": {
+      let msg = `📊 <b>Утренний дайджест</b>\n━━━━━━━━━━━━━━━━━━━━\n`;
+      msg += `Проектов: ${payload.total_projects || 0}\n`;
+      msg += `Прогресс: ${payload.avg_progress || 0}%\n`;
+      msg += `Алертов: ${payload.open_alerts || 0}`;
+      if (Number(payload.critical_alerts) > 0) msg += ` 🔴 крит: ${payload.critical_alerts}`;
+      msg += `\nДефицит: ${payload.deficit_count || 0} позиций`;
+      return msg;
+    }
+
     default:
       return `📌 <b>STSphera</b>\n${payload.message || "Новое уведомление"}`;
   }
