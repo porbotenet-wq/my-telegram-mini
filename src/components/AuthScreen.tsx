@@ -64,42 +64,41 @@ const AuthScreen = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-8 animate-fade-in">
+      {/* Логотип */}
       <div className="text-center mb-8">
-        <div className="font-mono text-xs tracking-[0.3em] text-primary mb-2">
-          STSphera · CITY4
+        <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-3">
+          <span className="text-primary font-bold text-lg">S</span>
         </div>
-        <h1 className="text-3xl font-extrabold tracking-tight mb-1">СИТИ 4</h1>
-        <p className="text-sm text-muted-foreground">Система управления фасадным проектом</p>
+        <h1 className="text-2xl font-extrabold tracking-tight">SMR</h1>
+        <p className="text-[12px] text-[hsl(var(--t2))] mt-1">
+          Система управления строительными объектами
+        </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex w-full max-w-md mb-6 bg-card rounded-lg border border-border overflow-hidden">
-        <button
-          onClick={() => setMode("login")}
-          className={`flex-1 py-2.5 text-sm font-semibold transition-all ${
-            mode === "login"
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Вход
-        </button>
-        <button
-          onClick={() => setMode("register")}
-          className={`flex-1 py-2.5 text-sm font-semibold transition-all ${
-            mode === "register"
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Регистрация
-        </button>
+      {/* Переключатель вход/регистрация */}
+      <div className="w-full max-w-md mb-6">
+        <div className="grid grid-cols-2 gap-1 bg-[hsl(var(--bg1))] border border-border rounded-lg p-1">
+          {(["login", "register"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`py-2 text-[12px] font-semibold rounded-md transition-all duration-150 ${
+                mode === m
+                  ? "bg-primary text-primary-foreground"
+                  : "text-[hsl(var(--t2))] hover:text-[hsl(var(--t1))]"
+              }`}
+            >
+              {m === "login" ? "Вход" : "Регистрация"}
+            </button>
+          ))}
+        </div>
       </div>
 
+      {/* Форма */}
       <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
         {mode === "register" && (
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-[hsl(var(--t3))] mb-1.5 block">
               Имя
             </label>
             <input
@@ -107,13 +106,16 @@ const AuthScreen = () => {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Иван Петров"
-              className="w-full bg-card border border-border rounded-lg px-4 py-3 text-foreground text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground"
+              className="w-full bg-[hsl(var(--bg1))] border border-border rounded-lg px-3.5 py-3
+                         text-[13px] text-foreground outline-none transition-all
+                         focus:border-primary/40 focus:ring-2 focus:ring-primary/10
+                         placeholder:text-[hsl(var(--t3))]"
             />
           </div>
         )}
 
         <div>
-          <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">
+          <label className="text-[10px] font-bold uppercase tracking-wider text-[hsl(var(--t3))] mb-1.5 block">
             Email
           </label>
           <input
@@ -121,12 +123,15 @@ const AuthScreen = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="email@company.ru"
-            className="w-full bg-card border border-border rounded-lg px-4 py-3 text-foreground text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground"
+            className="w-full bg-[hsl(var(--bg1))] border border-border rounded-lg px-3.5 py-3
+                       text-[13px] text-foreground outline-none transition-all
+                       focus:border-primary/40 focus:ring-2 focus:ring-primary/10
+                       placeholder:text-[hsl(var(--t3))]"
           />
         </div>
 
         <div>
-          <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">
+          <label className="text-[10px] font-bold uppercase tracking-wider text-[hsl(var(--t3))] mb-1.5 block">
             Пароль
           </label>
           <input
@@ -134,18 +139,23 @@ const AuthScreen = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
-            className="w-full bg-card border border-border rounded-lg px-4 py-3 text-foreground text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground"
+            className="w-full bg-[hsl(var(--bg1))] border border-border rounded-lg px-3.5 py-3
+                       text-[13px] text-foreground outline-none transition-all
+                       focus:border-primary/40 focus:ring-2 focus:ring-primary/10
+                       placeholder:text-[hsl(var(--t3))]"
           />
         </div>
 
         {mode === "login" && (
-          <button
-            type="button"
-            onClick={handleForgotPassword}
-            className="text-xs text-primary hover:underline"
-          >
-            Забыли пароль?
-          </button>
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              className="text-[11px] text-primary hover:underline"
+            >
+              Забыли пароль?
+            </button>
+          </div>
         )}
 
         <button
@@ -163,7 +173,7 @@ const AuthScreen = () => {
 
       <Link
         to="/privacy"
-        className="text-[10px] text-muted-foreground hover:text-primary transition-colors mt-6 underline underline-offset-2"
+        className="text-[10px] text-[hsl(var(--t3))] hover:text-primary transition-colors mt-6 underline underline-offset-2"
       >
         Политика конфиденциальности
       </Link>
