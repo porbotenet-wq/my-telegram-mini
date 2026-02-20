@@ -2,7 +2,8 @@
 // MONOLITH v3.0 — Bottom drawer for additional tabs
 import {
   CreditCard, BarChart3, Users, Package, Calendar as CalendarIcon,
-  Workflow, CheckCircle, Sheet, FileText, Settings, Sparkles, Award
+  Workflow, CheckCircle, Sheet, FileText, Settings, Sparkles, Award,
+  User, UsersRound
 } from "lucide-react";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { getAllowedTabs } from "@/data/roleConfig";
@@ -57,6 +58,8 @@ const MoreDrawer = ({ open, onOpenChange, activeTab, onTabChange, showProjectCar
   }));
 
   const systemTabs = [
+    { id: "team", label: "Команда", icon: UsersRound },
+    { id: "profile", label: "Профиль", icon: User },
     { id: "report", label: "Отчёт", icon: FileText },
     { id: "xp", label: "XP", icon: Award },
   ];

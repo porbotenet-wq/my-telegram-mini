@@ -33,6 +33,8 @@ const InstallPWA = lazy(() => import("@/components/InstallPWA"));
 const DailyLogs = lazy(() => import("@/components/DailyLogs"));
 const Approvals = lazy(() => import("@/components/Approvals"));
 const TelegramSettings = lazy(() => import("@/components/TelegramSettings"));
+const ProfilePage = lazy(() => import("@/components/ProfilePage"));
+const TeamPage = lazy(() => import("@/components/TeamPage"));
 
 // ── Типы ─────────────────────────────────────────────────
 type Screen = "projects" | "create" | "project" | "director";
@@ -196,6 +198,8 @@ const Index = () => {
         <GamificationPanel userId={user.id} projectId={pid} userRole={userRole} />
       ) : null;
       case "settings": return <TelegramSettings />;
+      case "profile":  return <ProfilePage projectId={pid} />;
+      case "team":     return <TeamPage projectId={pid} />;
       default:        return <DashboardRouter projectId={pid} />;
     }
   };
