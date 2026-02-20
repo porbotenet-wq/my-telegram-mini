@@ -1,0 +1,27 @@
+{
+  "name": "normbase-parser",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "crawl": "tsx src/crawl.ts",
+    "parse": "tsx src/parse.ts",
+    "embed": "tsx src/embed.ts",
+    "pipeline": "tsx src/pipeline.ts",
+    "seed": "tsx src/seed-documents.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "axios": "^1.7.0",
+    "cheerio": "^1.0.0",
+    "openai": "^4.60.0",
+    "dotenv": "^16.4.0",
+    "pdf-parse": "^1.1.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0",
+    "@types/node": "^22.0.0",
+    "@types/pdf-parse": "^1.1.4"
+  }
+}
