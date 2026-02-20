@@ -71,6 +71,81 @@ function formatMessage(eventType: string, payload: Record<string, unknown>): str
              `Алертов: ${payload.open_alerts}\n` +
              `До сдачи: ${payload.days_left} дн.`;
 
+    // ── v4 Auto-trigger events ──
+    case "document.sent":
+      return `📤 <b>Документ получен</b>\n` +
+             `${payload.label}\n` +
+             `От: ${payload.sender || ""}\n` +
+             `${payload.comment ? `💬 ${payload.comment}` : ""}\n` +
+             `Объект: ${payload.project_name || ""}`;
+
+    case "kmd.ready":
+      return `✏️ <b>КМД готов</b>\n` +
+             `${payload.facade || ""}\n` +
+             `Объект: ${payload.project_name || ""}\n` +
+             `Передано в производство`;
+
+    case "spec.issued":
+      return `📏 <b>Спецификация выпущена</b>\n` +
+             `${payload.spec_name || ""}\n` +
+             `Объект: ${payload.project_name || ""}\n` +
+             `Передано в снабжение`;
+
+    case "shipment.24h":
+      return `🚚 <b>Отгрузка через 24ч</b>\n` +
+             `${payload.material || ""}\n` +
+             `Кол-во: ${payload.quantity || ""} ${payload.unit || ""}\n` +
+             `Объект: ${payload.project_name || ""}`;
+
+    case "material.mismatch":
+      return `🔴 <b>Несхождение материалов</b>\n` +
+             `${payload.material || ""}\n` +
+             `${payload.details || ""}\n` +
+             `Объект: ${payload.project_name || ""}`;
+
+    case "material.deficit":
+      return `🔴 <b>Критический дефицит</b>\n` +
+             `${payload.material || ""}: ${payload.deficit || ""} ${payload.unit || ""}\n` +
+             `Объект: ${payload.project_name || ""}`;
+
+    case "gpr.delay":
+      return `⚠️ <b>Задержка ГПР > 2 дн.</b>\n` +
+             `${payload.task || ""}\n` +
+             `Просрочка: ${payload.days || ""} дн.\n` +
+             `Объект: ${payload.project_name || ""}`;
+
+    case "task.overdue":
+      return `⏰ <b>Просроченная задача</b>\n` +
+             `«${payload.task_name || ""}»\n` +
+             `Дедлайн: ${payload.deadline || ""}\n` +
+             `Объект: ${payload.project_name || ""}`;
+
+    case "work.stop":
+      return `🛑 <b>ОСТАНОВКА РАБОТ</b>\n` +
+             `${payload.reason || ""}\n` +
+             `Инспектор: ${payload.inspector || ""}\n` +
+             `Объект: ${payload.project_name || ""}`;
+
+    case "aosr.signed":
+      return `✅ <b>АОСР подписан</b>\n` +
+             `${payload.aosr_type || ""}\n` +
+             `${payload.facade || ""} · эт.${payload.floor || ""}\n` +
+             `Объект: ${payload.project_name || ""}`;
+
+    case "photo.uploaded":
+      return `📸 <b>Фотоотчёт загружен</b>\n` +
+             `${payload.type || ""}\n` +
+             `${payload.facade || ""} · эт.${payload.floor || ""}\n` +
+             `${payload.count || ""} фото · ${payload.reporter || ""}\n` +
+             `Объект: ${payload.project_name || ""}`;
+
+    case "report.submitted":
+      return `📋 <b>Отчёт подан</b>\n` +
+             `${payload.reporter_name || ""}\n` +
+             `${payload.facade_name || ""} · эт.${payload.floor_number || ""}\n` +
+             `+${payload.value || 0} мод. (${payload.pct || 0}%)\n` +
+             `Объект: ${payload.project_name || ""}`;
+
     default:
       return `📌 <b>STSphera</b>\n${payload.message || "Новое уведомление"}`;
   }
