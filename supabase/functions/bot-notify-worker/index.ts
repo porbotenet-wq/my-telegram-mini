@@ -307,7 +307,7 @@ Deno.serve(async () => {
     );
 
     if (targets.length === 0) {
-      await db.from("bot_event_queue").update({ status: "skipped" }).eq("id", event.id);
+      await db.from("bot_event_queue").update({ status: "skipped", processed_at: new Date().toISOString() }).eq("id", event.id);
       skipped++;
       continue;
     }
@@ -370,7 +370,7 @@ Deno.serve(async () => {
   await db.from("bot_event_queue")
     .delete()
     .in("status", ["sent", "skipped"])
-    .lt("sent_at", new Date(Date.now() - 7 * 86400000).toISOString());
+    .lt("processed_at", new Date(Date.now() - 7 * 86400000).toISOString());
 
   // Refresh materialized view
   await db.rpc("refresh_portfolio_stats").then(() => {});
