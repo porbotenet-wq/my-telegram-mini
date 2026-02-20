@@ -1,164 +1,115 @@
 
 
-# Фаза 3: Визуал MONOLITH v3.0
+# Фаза 4 — Новые модули STSphera
 
-Полная визуальная доводка всех компонентов Mini App до дизайн-системы MONOLITH v3.0 (Concrete and Light).
-
----
-
-## Порядок выполнения
-
-### Блок 1: TabBar -- Bottom Navigation (CRITICAL)
-
-**Файл: `src/components/TabBar.tsx`** -- полная переработка:
-- Убрать горизонтальный скролл текстовых кнопок
-- Сделать `fixed bottom-0 left-0 right-0 z-50`
-- 5 основных вкладок с Lucide-иконками (22px):
-  - LayoutDashboard -- "Дашборд" (id: "dash")
-  - Building2 -- "Этажи" (id: "floors")
-  - ClipboardList -- "Задачи" (id: "logs")
-  - Bell -- "Алерты" (id: "alerts") + badge с кол-вом
-  - MoreHorizontal -- "Ещё" -- открывает drawer
-- Иконки: `text-t3`, active: `text-primary`
-- Лейблы: `text-[9px] font-semibold`, `text-t3` / active: `text-primary`
-- Фон: `bg-[hsl(var(--bg0)/0.92)] backdrop-blur-[20px]`
-- `border-t border-border`
-- `pb-[max(8px,env(safe-area-inset-bottom))]`
-- Min tap target: 56px width
-- Active LED: 2px полоска сверху иконки с `shadow-[0_0_6px_hsl(var(--green-glow))]`
-- Принимает новый prop `alertsCount?: number` для badge
-
-**Файл: `src/pages/Index.tsx`**:
-- Убрать `<div className="h-[70px]" />` (строка 246)
-- Добавить `pb-[72px]` на контейнер контента (строка 225)
-- Передавать `alertsCount` в TabBar (fetch из alerts table)
-- Обработка "Ещё" -- state `moreDrawerOpen`
-
-### Блок 7: Drawer "Ещё" (MEDIUM) -- реализуется вместе с Блоком 1
-
-**Новый файл: `src/components/MoreDrawer.tsx`**:
-- Vaul drawer (уже установлен) снизу
-- `bg-bg0/95 backdrop-blur-[20px]`
-- Grid 3 колонки всех остальных вкладок (card, pf, crew, sup, gpr, wflow, appr, sheets, docs, cal, settings + extras)
-- Каждый item: Lucide иконка + лейбл, `min-h-[56px]`, `active:scale-[0.97]`
-- Закрытие: overlay tap или свайп
+Четыре модуля, реализуемые по порядку: Карточки проектов, Профиль + Команда, Контекстное меню, Чаты задач.
 
 ---
 
-### Блок 2: Ролевые дашборды -- MONOLITH tokens (HIGH)
+## Модуль 2: Карточки проектов с hero-image (первый в очереди)
 
-Замены во всех 4 файлах (`PMDashboard.tsx`, `ForemanDashboard.tsx`, `InspectorDashboard.tsx`, `PTODashboard.tsx`):
+### БД: миграция
+- Добавить `cover_image_url TEXT` в таблицу `projects`
 
-Общие замены:
-- `bg-card` -- `bg-bg1`
-- `text-muted-foreground` -- `text-t2` или `text-t3`
-- `text-foreground` -- `text-t1`
-- `bg-muted` -- `bg-bg3`
-- KPI числа: добавить `num` класс + `text-2xl font-bold`
-- Секции: заменить вручную написанные лейблы на `section-label`
-- Progress bars: использовать ProgressBar из Dashboard (shimmer на конце)
-- Добавить `led-top led-{color}` на карточки со статусом
-- Кнопки: `active:scale-[0.97]`
-- Заголовки: убрать emoji, заменить на иконку в контейнере `w-8 h-8 rounded-xl bg-[hsl(var(--green-dim))]`
+### Компонент `src/components/ProjectList.tsx` -- полная переработка
+- Вертикальный скролл hero-карточек вместо простых кнопок
+- Каждая карточка:
+  - Hero image (cover_image_url или placeholder gradient) 200px, rounded-2xl, object-cover
+  - Gradient overlay снизу: `bg-gradient-to-t from-[hsl(var(--bg0)/0.9)] to-transparent`
+  - На overlay: название (16px bold white), город + статус badge
+  - Mini KPI row: 3 числа (прогресс %, алертов, бригад) -- подгружаются отдельным запросом
+  - Progress bar 2px внизу
+  - LED-полоска сверху по статусу (green=active, amber=paused, red=critical alerts, blue=draft)
+- Floating FAB "+" кнопка справа внизу (fixed bottom-20 right-4)
+- Шапка: аватар пользователя + имя + кнопка выхода
+- Стиль MONOLITH v3.0 (bg-bg0, bg-bg1, text-t1/t2/t3, stagger-item)
 
-**PMDashboard.tsx**:
-- CounterCard: добавить `led-top` (red если value > 0 для "Просрочено", green если 0)
-- Числа: `num text-2xl font-bold`
-- Лейблы: `text-[9px] uppercase tracking-[0.15em] text-t3`
-
-**ForemanDashboard.tsx**:
-- Кнопка "Подать отчёт": если не подан -- `bg-primary shadow-[0_0_12px_hsl(var(--green-glow))]`
-- Этажная сетка: LED-полоска + num шрифт
-- Progress bar: shimmer variant
-
-**InspectorDashboard.tsx**:
-- Карточки статусов: `led-top` по цвету статуса
-- Все tokens замена
-
-**PTODashboard.tsx**:
-- KPI карточки: `led-top led-green` / `led-amber`
-- Все tokens замена
+### Доп. запросы для KPI
+- Для каждого проекта: alerts count, crews count, plan_fact progress %
+- Кэшировать в state, не блокировать рендер карточек
 
 ---
 
-### Блок 3: Risk Cards -- горизонтальный скролл (HIGH)
+## Модуль 1: Профиль сотрудника + Команда объекта
 
-**Новый файл: `src/components/RiskCards.tsx`**:
-- Принимает `projectId: string`
-- Загружает `alerts` WHERE `is_resolved = false`, ORDER BY `priority`
-- Горизонтальный скролл: `overflow-x-auto snap-x snap-mandatory scrollbar-none`
-- Каждая карточка 280px:
-  - `bg-bg1 border border-border rounded-xl p-3.5`
-  - `led-top` + цвет по priority (critical=`led-red`, high=`led-amber`, medium=`led-blue`)
-  - Badge: `text-[9px] uppercase px-2 py-0.5 rounded-md` + dim-фон
-  - Заголовок: `text-[13px] font-bold text-t1`
-  - Описание: `text-[11px] text-t2 line-clamp-2`
-  - Meta: иконка + `text-[10px] text-t3`
-- Если нет алертов -- не рендерить
+### БД: миграция
+- Добавить в `profiles`: `phone TEXT`, `email TEXT`, `position TEXT`, `avatar_url TEXT`, `last_active_at TIMESTAMPTZ DEFAULT now()`
 
-**Файл: `src/components/Dashboard.tsx`**:
-- Импортировать `RiskCards`
-- Разместить между KPI grid и Progress section
+### Новый компонент `src/components/UserProfile.tsx`
+- Экран "Мой профиль":
+  - Аватар 72px rounded-2xl (из avatar_url или initials fallback)
+  - ФИО, должность, телефон, email
+  - Роль на текущем объекте (badge с LED-цветом по роли из roleConfig)
+  - Список объектов пользователя (через user_roles + projects join, или все projects)
+  - Статистика: кол-во daily_logs, фото (photo_urls count)
+  - Кнопка "Редактировать" -- inline edit ФИО, телефон, avatar_url
+- Стиль MONOLITH v3.0
 
----
+### Новый компонент `src/components/ProjectTeam.tsx`
+- Экран "Команда объекта":
+  - Загрузка всех user_roles + profiles для проекта (через crews.foreman_user_id и общий user_roles)
+  - Группировка по ролям: Руководство (director, pm) -> Инженеры (opr, km, kmd) -> Прорабы (foreman1-3) -> Снабжение (supply) -> ПТО (pto) -> Технадзор (inspector, production)
+  - Каждый: аватар, ФИО, роль badge, online dot (last_active_at < 15 мин = green)
+  - Тап -> модальное окно профиля + кнопка "Написать в TG" (deep link t.me/username)
+  - Поиск по имени (фильтр в state)
+- Стиль MONOLITH v3.0
 
-### Блок 4: Quick Actions -- сетка 2x2 (MEDIUM)
-
-**Новый файл: `src/components/QuickActions.tsx`**:
-- Принимает `role: string`, `onAction: (tab: string) => void`
-- Grid 2x2 с кнопками, зависящими от роли:
-  - Foreman: Фото (Camera), Отчёт (FileText), Алерт (AlertTriangle), Прогресс (TrendingUp)
-  - PM: Входящие (Inbox), Согласования (CheckCircle), Алерт (AlertTriangle), ГПР (BarChart3)
-  - Director: Портфель (Building2), KPI (TrendingUp), Критичное (AlertTriangle), Финансы (DollarSign)
-  - Supply: Статус (Package), Дефицит (AlertTriangle), Входящие (Inbox), Отправить (Send)
-- Каждая кнопка:
-  - `min-h-[64px] bg-bg1 border border-border rounded-xl p-3`
-  - Иконка в контейнере `w-10 h-10 rounded-[10px]` + dim-фон
-  - Title: `text-[12px] font-bold text-t1`
-  - Sub: `text-[9px] text-t3`
-  - `active:scale-[0.97] hover:border-[rgba(255,255,255,0.1)]`
-
-**Интеграция**: добавить в каждый ролевой дашборд после KPI блока
+### Интеграция
+- Новые вкладки "profile" и "team" в MoreDrawer и renderTab в Index.tsx
+- ProfileSettings заменить на полноценный UserProfile
 
 ---
 
-### Блок 5: DirectorDashboard -- доводка (MEDIUM)
+## Модуль 4: Контекстное меню объекта
 
-**Файл: `src/components/DirectorDashboard.tsx`**:
-- Замена `bg-card` -- `bg-bg1`, `text-foreground` -- `text-t1`, `text-muted-foreground` -- `text-t2`/`text-t3`
-- KPI числа: добавить `num`
-- Карточки проектов: добавить `led-top` с цветом по статусу (active=green, paused=amber, draft=blue)
-- Финансы: ProgressBar с shimmer
-- Прорабы: зелёный/красный dot (`w-2 h-2 rounded-full`)
-- Критические алерты: `led-top led-red` + `shadow-[0_0_8px_hsl(var(--red-glow))]`
-- Заголовок: убрать emoji, добавить Lucide иконку в dim-контейнере
-- Секции: `section-label`
+### Новый компонент `src/components/ProjectContextMenu.tsx`
+- Вызывается при первом входе в проект (или через свайп/кнопку)
+- Шапка: cover_image_url + overlay с названием + progress bar
+- Секция "Команда": горизонтальный скролл аватаров (из ProjectTeam данных)
+- Секция "Инструменты" (по роли через detectPrimaryRole):
+  - Foreman: Фотоотчёт, Дневной отчёт, Мои этажи, Алерты
+  - PM: Согласования, ГПР, Бригады, Снабжение, Документы
+  - Director: Портфель, KPI, Финансы, Критичное
+  - Supply: Заказы, Дефицит, Входящие, Документы
+- Секция "Общее": Календарь, Документы, Настройки
+- Секция "Обсуждения": список project_chats с deep links
+- Каждая кнопка: иконка в dim-контейнере + title + sub, active:scale-[0.97]
+- Реализация: Sheet (bottom drawer) или отдельная страница
+
+### Интеграция
+- Кнопка в TopBar для открытия контекстного меню
+- Или автоматическое открытие при выборе проекта
 
 ---
 
-### Блок 6: Entrance Animations (MEDIUM)
+## Модуль 3: Чаты задач (TG интеграция)
 
-**Файл: `src/index.css`**:
-- Добавить stagger keyframes и классы:
-```css
-@keyframes stagger-in {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.stagger-item { animation: stagger-in 0.25s ease forwards; opacity: 0; }
-.stagger-item:nth-child(1) { animation-delay: 0ms; }
-.stagger-item:nth-child(2) { animation-delay: 50ms; }
-.stagger-item:nth-child(3) { animation-delay: 100ms; }
-.stagger-item:nth-child(4) { animation-delay: 150ms; }
-.stagger-item:nth-child(5) { animation-delay: 200ms; }
-.stagger-item:nth-child(6) { animation-delay: 250ms; }
-```
+### БД: миграция
+- Расширить `project_chats`:
+  - Добавить `chat_type TEXT DEFAULT 'general'` (general/task/alert)
+  - Добавить `reference_id UUID` (ссылка на task/alert)
+  - Добавить `telegram_chat_id TEXT` (ID чата в TG)
+  - Добавить `last_message TEXT`
+  - Добавить `last_message_at TIMESTAMPTZ`
+  - Добавить `unread_count INTEGER DEFAULT 0`
+  - Добавить `created_by UUID`
 
-**Применить `stagger-item`**:
-- KPI cards в Dashboard, PMDashboard, DirectorDashboard, PTODashboard
-- Risk Cards
-- Quick Action buttons
-- Списки в дашбордах
+### Новый компонент `src/components/TaskChats.tsx`
+- Список активных обсуждений для проекта
+- Каждый чат: title, last_message preview, badge непрочитанных, timestamp
+- Тап -> deep link `tg://resolve?domain=...` или `https://t.me/c/...`
+- Фильтр: Все / Задачи / Алерты
+
+### Кнопка "Обсудить в TG" в карточках задач/алертов
+- В компонентах Alerts.tsx и Workflow.tsx -- добавить кнопку
+- При нажатии: вызов edge function `telegram-manage` для создания группы
+- Бот добавляет участников по ролям задачи
+
+### Edge function `telegram-manage` (уже существует -- расширить)
+- Новый action: `create_task_chat`
+- Создает TG-группу через Bot API `createChat`
+- Записывает в project_chats
+- Возвращает deep link
 
 ---
 
@@ -166,24 +117,31 @@
 
 | Действие | Файл |
 |---|---|
-| Переписать | `src/components/TabBar.tsx` |
-| Создать | `src/components/MoreDrawer.tsx` |
-| Создать | `src/components/RiskCards.tsx` |
-| Создать | `src/components/QuickActions.tsx` |
-| Редактировать | `src/pages/Index.tsx` |
-| Редактировать | `src/components/Dashboard.tsx` |
-| Редактировать | `src/components/PMDashboard.tsx` |
-| Редактировать | `src/components/ForemanDashboard.tsx` |
-| Редактировать | `src/components/InspectorDashboard.tsx` |
-| Редактировать | `src/components/PTODashboard.tsx` |
-| Редактировать | `src/components/DirectorDashboard.tsx` |
-| Редактировать | `src/index.css` |
+| Миграция | profiles: +phone, email, position, avatar_url, last_active_at |
+| Миграция | projects: +cover_image_url |
+| Миграция | project_chats: +chat_type, reference_id, telegram_chat_id, last_message, last_message_at, unread_count, created_by |
+| Переписать | `src/components/ProjectList.tsx` |
+| Создать | `src/components/UserProfile.tsx` |
+| Создать | `src/components/ProjectTeam.tsx` |
+| Создать | `src/components/ProjectContextMenu.tsx` |
+| Создать | `src/components/TaskChats.tsx` |
+| Редактировать | `src/pages/Index.tsx` (новые вкладки) |
+| Редактировать | `src/components/MoreDrawer.tsx` (новые пункты) |
+| Редактировать | `src/components/TopBar.tsx` (кнопка контекстного меню) |
+| Редактировать | `src/components/Alerts.tsx` (кнопка "Обсудить в TG") |
+| Редактировать | `supabase/functions/telegram-manage/index.ts` (create_task_chat) |
+
+## Порядок реализации
+
+1. Миграции БД (все 3 сразу)
+2. Модуль 2 -- ProjectList с hero-карточками
+3. Модуль 1 -- UserProfile + ProjectTeam
+4. Модуль 4 -- ProjectContextMenu
+5. Модуль 3 -- TaskChats + edge function
 
 ## Ограничения
-
-- Никаких изменений в логике данных (Supabase queries, auth, routing)
-- Не менять структуру маршрутизации в DashboardRouter и Index.tsx
-- Только визуальные изменения
-- Все цвета через CSS custom properties
-- Минимальный тап-таргет: 56px
+- RLS на новых полях profiles -- уже покрыто существующими policies (user own data)
+- project_chats -- уже имеет RLS policies
+- Все визуалы в MONOLITH v3.0
+- Не ломаем существующую навигацию и логику
 
