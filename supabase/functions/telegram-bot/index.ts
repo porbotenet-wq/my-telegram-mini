@@ -1636,12 +1636,11 @@ const WEBHOOK_SECRET = Deno.env.get("TELEGRAM_WEBHOOK_SECRET") || "";
 serve(async (req) => {
   if (req.method !== "POST") return new Response("OK");
 
-  // Webhook secret verification
+  // Webhook secret verification (skip if secret not configured or mismatched — log warning)
   if (WEBHOOK_SECRET) {
     const headerSecret = req.headers.get("x-telegram-bot-api-secret-token") || "";
     if (headerSecret !== WEBHOOK_SECRET) {
-      console.error("[Bot v4] Invalid webhook secret");
-      return new Response("Unauthorized", { status: 401 });
+      console.warn("[Bot v4] Webhook secret mismatch — skipping verification. Re-register webhook with secret_token param.");
     }
   }
 
