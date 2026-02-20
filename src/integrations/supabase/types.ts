@@ -319,6 +319,57 @@ export type Database = {
         }
         Relationships: []
       }
+      bot_documents: {
+        Row: {
+          comment: string | null
+          created_at: string
+          doc_type: string
+          file_url: string | null
+          id: string
+          project_id: string | null
+          recipients: string[]
+          sender_id: string
+          status: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          doc_type: string
+          file_url?: string | null
+          id?: string
+          project_id?: string | null
+          recipients?: string[]
+          sender_id: string
+          status?: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          doc_type?: string
+          file_url?: string | null
+          id?: string
+          project_id?: string | null
+          recipients?: string[]
+          sender_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "bot_documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bot_event_queue: {
         Row: {
           attempts: number
@@ -384,6 +435,63 @@ export type Database = {
           },
           {
             foreignKeyName: "bot_event_queue_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bot_inbox: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_url: string | null
+          from_role: string
+          from_user_id: string
+          id: string
+          project_id: string | null
+          status: string
+          title: string
+          to_roles: string[]
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_url?: string | null
+          from_role: string
+          from_user_id: string
+          id?: string
+          project_id?: string | null
+          status?: string
+          title: string
+          to_roles?: string[]
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_url?: string | null
+          from_role?: string
+          from_user_id?: string
+          id?: string
+          project_id?: string | null
+          status?: string
+          title?: string
+          to_roles?: string[]
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_inbox_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "bot_inbox_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -2163,6 +2271,9 @@ export type Database = {
         | "foreman3"
         | "pto"
         | "inspector"
+        | "project_opr"
+        | "project_km"
+        | "project_kmd"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2301,6 +2412,9 @@ export const Constants = {
         "foreman3",
         "pto",
         "inspector",
+        "project_opr",
+        "project_km",
+        "project_kmd",
       ],
     },
   },
