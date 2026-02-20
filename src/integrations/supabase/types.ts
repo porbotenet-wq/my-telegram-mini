@@ -113,26 +113,32 @@ export type Database = {
       }
       ai_messages: {
         Row: {
+          citations: Json | null
           content: string
           conversation_id: string
           created_at: string
           id: string
+          mode: string | null
           role: string
           tokens_used: number | null
         }
         Insert: {
+          citations?: Json | null
           content: string
           conversation_id: string
           created_at?: string
           id?: string
+          mode?: string | null
           role?: string
           tokens_used?: number | null
         }
         Update: {
+          citations?: Json | null
           content?: string
           conversation_id?: string
           created_at?: string
           id?: string
+          mode?: string | null
           role?: string
           tokens_used?: number | null
         }
@@ -1356,6 +1362,80 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      norm_chunks: {
+        Row: {
+          chunk_index: number | null
+          content: string
+          created_at: string | null
+          document_id: string
+          embedding: string | null
+          id: string
+          section: string | null
+        }
+        Insert: {
+          chunk_index?: number | null
+          content: string
+          created_at?: string | null
+          document_id: string
+          embedding?: string | null
+          id?: string
+          section?: string | null
+        }
+        Update: {
+          chunk_index?: number | null
+          content?: string
+          created_at?: string | null
+          document_id?: string
+          embedding?: string | null
+          id?: string
+          section?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "norm_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "norm_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      norm_documents: {
+        Row: {
+          category: string | null
+          code: string
+          created_at: string | null
+          file_url: string | null
+          id: string
+          source_url: string | null
+          title: string
+          total_chunks: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          code: string
+          created_at?: string | null
+          file_url?: string | null
+          id?: string
+          source_url?: string | null
+          title: string
+          total_chunks?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          code?: string
+          created_at?: string | null
+          file_url?: string | null
+          id?: string
+          source_url?: string | null
+          title?: string
+          total_chunks?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       notifications_config: {
         Row: {
