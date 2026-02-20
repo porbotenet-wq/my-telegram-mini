@@ -14,16 +14,20 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
 const SB_URL    = Deno.env.get("SUPABASE_URL")!;
 const SB_KEY    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const APP_URL   = Deno.env.get("MINI_APP_URL") || "https://smr-sfera.lovable.app";
+const RAW_APP_URL = Deno.env.get("MINI_APP_URL") || "https://smr-sfera.lovable.app";
+const APP_URL = RAW_APP_URL.startsWith("http") ? RAW_APP_URL : `https://${RAW_APP_URL}`;
 const TG        = `https://api.telegram.org/bot${BOT_TOKEN}`;
 const db = createClient(SB_URL, SB_KEY);
 const SEP = "─".repeat(29);
 
 // ── TG API helpers ──────────────────────────────────────────
 async function tgSend(chatId: number, text: string, markup?: object): Promise<number | null> {
+  console.log(`[tgSend] chatId=${chatId} textLen=${text.length}`);
   const res = await fetch(`${TG}/sendMessage`, { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML", disable_web_page_preview: true, ...(markup ? { reply_markup: markup } : {}) }) });
-  const j = await res.json(); return j.ok ? j.result.message_id : null;
+  const j = await res.json();
+  if (!j.ok) console.error(`[tgSend] FAILED:`, JSON.stringify(j));
+  return j.ok ? j.result.message_id : null;
 }
 async function tgEdit(chatId: number, msgId: number, text: string, markup?: object) {
   await fetch(`${TG}/editMessageText`, { method: "POST", headers: { "Content-Type": "application/json" },
@@ -918,19 +922,22 @@ async function handleUpdate(update: any) {
 
     if (msg.voice) { await tgSend(chatId, "🎤 Голосовые отчёты доступны в Mini App (кнопка 🚀)."); return; }
 
+    console.log(`[handleUpdate] chatId=${chatId} text="${text}"`);
     const user = await getUser(chatId);
+    console.log(`[handleUpdate] user=${user ? user.display_name : "NOT_FOUND"} roles=${user?.roles}`);
     const session = user ? await getSession(chatId) : null;
+    console.log(`[handleUpdate] session=${session?.state || "null"}`);
 
     // /start, /menu — полный перезапуск бота
     if (text.startsWith("/start") || text.startsWith("/menu")) {
-      if (!user) { await screenUnknownUser(chatId, firstName); return; }
+      if (!user) { console.log("[handleUpdate] unknown → screenUnknownUser"); await screenUnknownUser(chatId, firstName); return; }
       await tgDeleteMsg(chatId, msg.message_id);
-      // Удаляем старое сообщение бота и сбрасываем сессию
       if (session?.message_id) {
         await tgDeleteMsg(chatId, session.message_id);
       }
       await clearSession(chatId);
       const freshSession = null;
+      console.log(`[handleUpdate] /start roles=${user.roles} → routing`);
       if (isDirector(user.roles)) return screenDirectorMenu(chatId, user, freshSession);
       if (isPM(user.roles)) return screenPMMenu(chatId, user, freshSession);
       if (isForeman(user.roles)) return screenForemanMenu(chatId, user, freshSession);
