@@ -947,10 +947,12 @@ export type Database = {
       }
       ecosystem_tasks: {
         Row: {
+          assigned_role: string | null
           assigned_to: string | null
           block: string
           code: string
           created_at: string
+          deadline: string | null
           department: string
           dependency_ids: string | null
           duration_days: number | null
@@ -966,6 +968,7 @@ export type Database = {
           progress: number
           project_id: string | null
           recipient: string | null
+          reminder_sent: boolean | null
           responsible: string | null
           status: string
           task_number: number
@@ -973,10 +976,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assigned_role?: string | null
           assigned_to?: string | null
           block: string
           code: string
           created_at?: string
+          deadline?: string | null
           department: string
           dependency_ids?: string | null
           duration_days?: number | null
@@ -992,6 +997,7 @@ export type Database = {
           progress?: number
           project_id?: string | null
           recipient?: string | null
+          reminder_sent?: boolean | null
           responsible?: string | null
           status?: string
           task_number: number
@@ -999,10 +1005,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assigned_role?: string | null
           assigned_to?: string | null
           block?: string
           code?: string
           created_at?: string
+          deadline?: string | null
           department?: string
           dependency_ids?: string | null
           duration_days?: number | null
@@ -1018,6 +1026,7 @@ export type Database = {
           progress?: number
           project_id?: string | null
           recipient?: string | null
+          reminder_sent?: boolean | null
           responsible?: string | null
           status?: string
           task_number?: number
@@ -1270,6 +1279,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications_config: {
+        Row: {
+          created_at: string | null
+          deadline_alerts: boolean | null
+          dnd_end: string | null
+          dnd_start: string | null
+          id: string
+          morning_briefing: boolean | null
+          report_reminder: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          deadline_alerts?: boolean | null
+          dnd_end?: string | null
+          dnd_start?: string | null
+          id?: string
+          morning_briefing?: boolean | null
+          report_reminder?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          deadline_alerts?: boolean | null
+          dnd_end?: string | null
+          dnd_start?: string | null
+          id?: string
+          morning_briefing?: boolean | null
+          report_reminder?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       onboarding_attempts: {
         Row: {
@@ -1814,6 +1859,86 @@ export type Database = {
             columns: ["material_id"]
             isOneToOne: false
             referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stage_acceptance: {
+        Row: {
+          accepted_at: string | null
+          created_at: string | null
+          facade_id: string | null
+          floor_id: string | null
+          foreman_id: string | null
+          id: string
+          inspected_at: string | null
+          inspector_id: string | null
+          notes: string | null
+          project_id: string | null
+          pto_id: string | null
+          ready_at: string | null
+          stage: string
+          status: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string | null
+          facade_id?: string | null
+          floor_id?: string | null
+          foreman_id?: string | null
+          id?: string
+          inspected_at?: string | null
+          inspector_id?: string | null
+          notes?: string | null
+          project_id?: string | null
+          pto_id?: string | null
+          ready_at?: string | null
+          stage: string
+          status?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string | null
+          facade_id?: string | null
+          floor_id?: string | null
+          foreman_id?: string | null
+          id?: string
+          inspected_at?: string | null
+          inspector_id?: string | null
+          notes?: string | null
+          project_id?: string | null
+          pto_id?: string | null
+          ready_at?: string | null
+          stage?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage_acceptance_facade_id_fkey"
+            columns: ["facade_id"]
+            isOneToOne: false
+            referencedRelation: "facades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_acceptance_floor_id_fkey"
+            columns: ["floor_id"]
+            isOneToOne: false
+            referencedRelation: "floors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_acceptance_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "stage_acceptance_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]

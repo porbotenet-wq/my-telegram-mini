@@ -9,7 +9,7 @@ import OfflineBar from "@/components/OfflineBar";
 import { useOfflineCache } from "@/hooks/useOfflineCache";
 
 // ── Lazy-loaded компоненты ────────────────────────────────
-const Dashboard = lazy(() => import("@/components/Dashboard"));
+const DashboardRouter = lazy(() => import("@/components/DashboardRouter"));
 const Floors = lazy(() => import("@/components/Floors"));
 const PlanFact = lazy(() => import("@/components/PlanFact"));
 const Crew = lazy(() => import("@/components/Crew"));
@@ -160,7 +160,7 @@ const Index = () => {
   const renderTab = () => {
     switch (activeTab) {
       case "card":    return <ProjectCard projectId={pid} onBack={() => setScreen("projects")} />;
-      case "dash":    return <Dashboard projectId={pid} />;
+      case "dash":    return <DashboardRouter projectId={pid} />;
       case "floors":  return <Floors projectId={pid} />;
       case "pf":      return <PlanFact projectId={pid} />;
       case "crew":    return <Crew projectId={pid} />;
@@ -180,7 +180,7 @@ const Index = () => {
         <GamificationPanel userId={user.id} projectId={pid} userRole={userRole} />
       ) : null;
       case "settings": return <TelegramSettings />;
-      default:        return <Dashboard projectId={pid} />;
+      default:        return <DashboardRouter projectId={pid} />;
     }
   };
 
