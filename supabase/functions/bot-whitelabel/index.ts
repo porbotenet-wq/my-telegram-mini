@@ -4,6 +4,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { authenticate } from "../_shared/authMiddleware.ts";
+import { getCorsHeaders } from "../_shared/corsHeaders.ts";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const SB_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -152,7 +154,7 @@ async function saveSession(chatId: number, companyId: string, state: string, con
     context,
     message_id: msgId,
     updated_at: new Date().toISOString(),
-    expires_at: new Date(Date.now() + 7200000).toISOString(),
+    expires_at: new Date(Date.now() + 28800000).toISOString(),
   }, { onConflict: "chat_id" });
 }
 
