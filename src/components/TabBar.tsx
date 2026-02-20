@@ -1,5 +1,8 @@
 // src/components/TabBar.tsx
-// MONOLITH v3.0 — Frosted concrete tab strip with LED active indicator
+// MONOLITH v3.0 — Fixed bottom navigation with LED indicators
+import { useState } from "react";
+import { LayoutDashboard, Building2, ClipboardList, Bell, MoreHorizontal } from "lucide-react";
+import MoreDrawer from "./MoreDrawer";
 import { getAllowedTabs } from "@/data/roleConfig";
 
 interface ExtraTab {
@@ -14,73 +17,84 @@ interface TabBarProps {
   showProjectCard?: boolean;
   userRoles?: string[];
   extraTabs?: ExtraTab[];
+  alertsCount?: number;
 }
 
-const BASE_TABS = [
-  { id: "card",     label: "Объект" },
-  { id: "dash",     label: "Дашборд" },
-  { id: "floors",   label: "Этажи" },
-  { id: "pf",       label: "План-Факт" },
-  { id: "crew",     label: "Бригады" },
-  { id: "sup",      label: "Снабжение" },
-  { id: "gpr",      label: "ГПР" },
-  { id: "wflow",    label: "Процессы" },
-  { id: "alerts",   label: "Алерты" },
-  { id: "logs",     label: "Отчёты" },
-  { id: "appr",     label: "Согласования" },
-  { id: "sheets",   label: "Sheets" },
-  { id: "docs",     label: "Документы" },
-  { id: "cal",      label: "Календарь" },
-  { id: "settings", label: "Настройки" },
+const BOTTOM_TABS = [
+  { id: "dash", label: "Дашборд", icon: LayoutDashboard },
+  { id: "floors", label: "Этажи", icon: Building2 },
+  { id: "logs", label: "Задачи", icon: ClipboardList },
+  { id: "alerts", label: "Алерты", icon: Bell },
 ];
 
-const SYSTEM_TABS = [
-  { id: "report", label: "Отчёт" },
-  { id: "xp",     label: "XP" },
-];
-
-const TabBar = ({ activeTab, onTabChange, showProjectCard, userRoles, extraTabs }: TabBarProps) => {
+const TabBar = ({ activeTab, onTabChange, showProjectCard, userRoles, extraTabs, alertsCount }: TabBarProps) => {
+  const [moreOpen, setMoreOpen] = useState(false);
   const allowedTabs = getAllowedTabs(userRoles || []);
 
-  const visibleBase = BASE_TABS.filter((t) => {
-    if (t.id === "card" && !showProjectCard) return false;
+  const visibleBottom = BOTTOM_TABS.filter((t) => {
     if (allowedTabs && !allowedTabs.includes(t.id)) return false;
     return true;
   });
 
-  const extraMapped = (extraTabs || []).map((t) => ({
-    id: t.id,
-    label: t.icon ? `${t.icon} ${t.label}` : t.label,
-  }));
-
-  const allTabs = [...visibleBase, ...extraMapped, ...SYSTEM_TABS];
-
   return (
-    <div className="sticky top-14 z-40 bg-[hsl(var(--bg0)/0.92)] backdrop-blur-[20px] border-b border-border">
-      <div className="flex items-center gap-0.5 px-3 py-1.5 overflow-x-auto scrollbar-none">
-        {allTabs.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => onTabChange(tab.id)}
-              className={`flex-shrink-0 relative px-3 py-2 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all duration-150 active:scale-[0.97] ${
-                isActive
-                  ? "text-primary bg-[hsl(var(--green-dim))]"
-                  : "text-t2 hover:text-t1 hover:bg-bg2"
-              }`}
-              style={{ minWidth: 56 }}
-            >
-              {tab.label}
-              {/* LED indicator — surgical green line */}
-              {isActive && (
-                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-[2px] rounded-full bg-primary shadow-[0_0_6px_hsl(var(--green-glow))]" />
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
+    <>
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[hsl(var(--bg0)/0.92)] backdrop-blur-[20px] border-t border-border"
+        style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}
+      >
+        <div className="flex items-center justify-around px-2 pt-1.5">
+          {visibleBottom.map((tab) => {
+            const isActive = activeTab === tab.id;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => onTabChange(tab.id)}
+                className="relative flex flex-col items-center gap-0.5 min-w-[56px] py-1.5 transition-all duration-150 active:scale-[0.97]"
+              >
+                {/* LED indicator top */}
+                {isActive && (
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-[2px] rounded-full bg-primary shadow-[0_0_6px_hsl(var(--green-glow))]" />
+                )}
+                <div className="relative">
+                  <Icon size={22} className={isActive ? "text-primary" : "text-t3"} />
+                  {/* Badge for alerts */}
+                  {tab.id === "alerts" && alertsCount != null && alertsCount > 0 && (
+                    <span className="absolute -top-1 -right-1.5 w-4 h-4 rounded-full bg-destructive flex items-center justify-center text-[8px] font-bold text-white">
+                      {alertsCount > 9 ? "9+" : alertsCount}
+                    </span>
+                  )}
+                </div>
+                <span className={`text-[9px] font-semibold ${isActive ? "text-primary" : "text-t3"}`}>
+                  {tab.label}
+                </span>
+              </button>
+            );
+          })}
+
+          {/* More button */}
+          <button
+            onClick={() => setMoreOpen(true)}
+            className="relative flex flex-col items-center gap-0.5 min-w-[56px] py-1.5 transition-all duration-150 active:scale-[0.97]"
+          >
+            <MoreHorizontal size={22} className="text-t3" />
+            <span className="text-[9px] font-semibold text-t3">Ещё</span>
+          </button>
+        </div>
+      </nav>
+
+      <MoreDrawer
+        open={moreOpen}
+        onOpenChange={setMoreOpen}
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          onTabChange(tab);
+          setMoreOpen(false);
+        }}
+        showProjectCard={showProjectCard}
+        userRoles={userRoles}
+        extraTabs={extraTabs}
+      />
+    </>
   );
 };
 

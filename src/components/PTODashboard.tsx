@@ -1,7 +1,8 @@
 // src/components/PTODashboard.tsx
+// MONOLITH v3.0 — PTO Dashboard with LED accents
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, FileCheck, FileText, Inbox } from "lucide-react";
+import { Loader2, FileCheck, FileText, Inbox, Ruler } from "lucide-react";
 
 interface Props { projectId: string; }
 
@@ -52,41 +53,47 @@ const PTODashboard = ({ projectId }: Props) => {
   }
 
   return (
-    <div className="p-3 space-y-3 animate-fade-in">
-      <div className="px-1 pt-2 pb-1">
-        <div className="text-[16px] font-bold text-foreground">📐 Панель ПТО</div>
+    <div className="p-3 space-y-4 animate-fade-in">
+      {/* Header */}
+      <div className="px-1 pt-2 pb-1 flex items-center gap-2.5">
+        <div className="w-8 h-8 rounded-xl bg-[hsl(var(--green-dim))] flex items-center justify-center">
+          <Ruler size={16} className="text-primary" />
+        </div>
+        <div className="text-[16px] font-bold text-t1">Панель ПТО</div>
       </div>
 
+      {/* KPI */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="bg-card border border-border rounded-xl p-3 text-center">
+        <div className="stagger-item bg-bg1 border border-border rounded-xl p-3 text-center led-top led-green">
           <FileCheck size={16} className="mx-auto text-primary mb-1" />
-          <div className="text-[20px] font-bold text-foreground">{aosrDocs.length}</div>
-          <div className="text-[8px] text-muted-foreground">АОСР</div>
+          <div className="num text-2xl font-bold text-t1">{aosrDocs.length}</div>
+          <div className="text-[9px] uppercase tracking-[0.15em] text-t3">АОСР</div>
         </div>
-        <div className="bg-card border border-border rounded-xl p-3 text-center">
+        <div className="stagger-item bg-bg1 border border-border rounded-xl p-3 text-center led-top led-green" style={{ animationDelay: "50ms" }}>
           <FileText size={16} className="mx-auto text-primary mb-1" />
-          <div className="text-[20px] font-bold text-foreground">{execSchemes}</div>
-          <div className="text-[8px] text-muted-foreground">Исп. схемы</div>
+          <div className="num text-2xl font-bold text-t1">{execSchemes}</div>
+          <div className="text-[9px] uppercase tracking-[0.15em] text-t3">Исп. схемы</div>
         </div>
-        <div className="bg-card border border-border rounded-xl p-3 text-center">
-          <Inbox size={16} className="mx-auto text-amber-500 mb-1" />
-          <div className="text-[20px] font-bold text-foreground">{pendingInbox}</div>
-          <div className="text-[8px] text-muted-foreground">Входящие</div>
+        <div className={`stagger-item bg-bg1 border border-border rounded-xl p-3 text-center led-top ${pendingInbox > 0 ? "led-amber" : "led-green"}`}
+          style={{ animationDelay: "100ms" }}>
+          <Inbox size={16} className={`mx-auto mb-1 ${pendingInbox > 0 ? "text-amber-500" : "text-primary"}`} />
+          <div className="num text-2xl font-bold text-t1">{pendingInbox}</div>
+          <div className="text-[9px] uppercase tracking-[0.15em] text-t3">Входящие</div>
         </div>
       </div>
 
       {/* AOSR registry */}
-      <div className="bg-card border border-border rounded-xl p-3">
-        <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Реестр АОСР</div>
+      <div className="bg-bg1 border border-border rounded-xl p-3">
+        <p className="section-label">Реестр АОСР</p>
         {aosrDocs.length === 0 ? (
-          <div className="text-[10px] text-muted-foreground py-4 text-center">Нет документов АОСР</div>
+          <div className="text-[10px] text-t3 py-4 text-center">Нет документов АОСР</div>
         ) : (
-          <div className="space-y-2">
-            {aosrDocs.map((d) => (
-              <div key={d.id} className="flex items-center gap-2 text-[10px]">
+          <div className="space-y-2 mt-2">
+            {aosrDocs.map((d, i) => (
+              <div key={d.id} className="stagger-item flex items-center gap-2 text-[10px]" style={{ animationDelay: `${i * 50}ms` }}>
                 <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
-                <span className="text-foreground truncate flex-1">{d.name}</span>
-                <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">{d.category}</span>
+                <span className="text-t1 truncate flex-1">{d.name}</span>
+                <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--green-dim))] text-primary font-semibold">{d.category}</span>
               </div>
             ))}
           </div>

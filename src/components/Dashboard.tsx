@@ -2,6 +2,7 @@
 // MONOLITH v3.0 — Bento KPI grid with LED accents and kinetic typography
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import RiskCards from "./RiskCards";
 
 interface DashboardProps {
   projectId: string;
@@ -125,8 +126,11 @@ const Dashboard = ({ projectId }: DashboardProps) => {
 
       {/* KPI Bento Grid */}
       <div className="grid grid-cols-2 gap-2.5">
-        {kpis.map((k) => <KPICard key={k.label} {...k} />)}
+        {kpis.map((k, i) => <KPICard key={k.label} {...k} />)}
       </div>
+
+      {/* Risk Cards */}
+      <RiskCards projectId={projectId} />
 
       {/* Progress section */}
       {totalModulesPlan > 0 && (
