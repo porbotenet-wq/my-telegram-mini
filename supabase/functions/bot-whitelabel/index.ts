@@ -53,7 +53,8 @@ async function getCompanyBySecret(secret: string): Promise<CompanyConfig | null>
   if (!companies) return null;
   const match = companies.find((c: any) => c.settings?.webhook_secret === secret);
   if (!match) return null;
-  return { ...match, cached_at: Date.now() };
+  const { settings: _s, ...rest } = match as any;
+  return { ...rest, cached_at: Date.now() } as CompanyConfig;
 }
 
 async function getCompanyByCode(code: string): Promise<CompanyConfig | null> {
