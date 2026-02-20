@@ -24,38 +24,57 @@ const DirectorDashboard = ({ onOpenProject }: DirectorDashboardProps) => {
 
   useEffect(() => {
     const load = async () => {
-      setLoading(true);
-      const { data: projectsData } = await supabase.from("projects").select("*").order("created_at", { ascending: false });
+      try {
+        setLoading(true);
+        const { data: projectsData } = await supabase.from("projects").select("*").order("created_at", { ascending: false });
 
-      if (!projectsData) { setLoading(false); return; }
+        if (!projectsData) { setLoading(false); return; }
 
-      const summaries: ProjectSummary[] = await Promise.all(
-        projectsData.map(async (p) => {
-          const [alertsRes, crewsRes, pfRes] = await Promise.all([
-            supabase.from("alerts").select("id", { count: "exact", head: true }).eq("project_id", p.id).eq("is_resolved", false),
-            supabase.from("crews").select("id", { count: "exact", head: true }).eq("project_id", p.id).eq("is_active", true),
-            supabase.from("plan_fact").select("plan_value, fact_value").eq("project_id", p.id),
-          ]);
+        const summaries: ProjectSummary[] = await Promise.all(
+          projectsData.map(async (p) => {
+            try {
+              const [alertsRes, crewsRes, pfRes] = await Promise.all([
+                supabase.from("alerts").select("id", { count: "exact", head: true }).eq("project_id", p.id).eq("is_resolved", false),
+                supabase.from("crews").select("id", { count: "exact", head: true }).eq("project_id", p.id).eq("is_active", true),
+                supabase.from("plan_fact").select("plan_value, fact_value").eq("project_id", p.id),
+              ]);
 
-          const totalPlan = (pfRes.data || []).reduce((s, r) => s + Number(r.plan_value || 0), 0);
-          const totalFact = (pfRes.data || []).reduce((s, r) => s + Number(r.fact_value || 0), 0);
+              const totalPlan = (pfRes.data || []).reduce((s, r) => s + Number(r.plan_value || 0), 0);
+              const totalFact = (pfRes.data || []).reduce((s, r) => s + Number(r.fact_value || 0), 0);
 
-          return {
-            id: p.id,
-            name: p.name,
-            city: p.city,
-            status: p.status,
-            startDate: p.start_date,
-            endDate: p.end_date,
-            alertsCount: alertsRes.count || 0,
-            crewsCount: crewsRes.count || 0,
-            progress: totalPlan > 0 ? Math.round((totalFact / totalPlan) * 100) : 0,
-          };
-        })
-      );
+              return {
+                id: p.id,
+                name: p.name,
+                city: p.city,
+                status: p.status,
+                startDate: p.start_date,
+                endDate: p.end_date,
+                alertsCount: alertsRes.count || 0,
+                crewsCount: crewsRes.count || 0,
+                progress: totalPlan > 0 ? Math.round((totalFact / totalPlan) * 100) : 0,
+              };
+            } catch {
+              return {
+                id: p.id,
+                name: p.name,
+                city: p.city,
+                status: p.status,
+                startDate: p.start_date,
+                endDate: p.end_date,
+                alertsCount: 0,
+                crewsCount: 0,
+                progress: 0,
+              };
+            }
+          })
+        );
 
-      setProjects(summaries);
-      setLoading(false);
+        setProjects(summaries);
+      } catch (e) {
+        console.error("DirectorDashboard load error:", e);
+      } finally {
+        setLoading(false);
+      }
     };
     load();
   }, []);
