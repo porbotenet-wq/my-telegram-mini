@@ -699,22 +699,37 @@ async function screenFinance(chatId: number, user: BotUser, session: any) {
 async function screenPMMenu(chatId: number, user: BotUser, session: any) {
   const projectId = session?.context?.project_id;
   const project = projectId ? await getProject(projectId) : (await getProjects())[0];
-  let text = `📋 <b>${user.display_name}</b> · РП\n${SEP}\n📅 ${todayStr()}\n\n`;
   const ctx: any = { project_id: project?.id, project_name: project?.name };
+
+  let text = `📋 <b>${user.display_name}</b> · Руководитель проекта\n${SEP}\n`;
   if (project) {
-    const pf = await getTodayPlanFact(project.id);
-    const alerts = await getOpenAlerts(project.id);
+    text += `🏗️ <b>${project.name}</b>\n\n`;
+
+    // Dynamic counters (as per PDF mockup)
     const inboxCount = await getInboxCount(project.id, "pm");
-    text += `🏗️ ${project.name}\n`;
+    const { count: pendingSend } = await db.from("bot_documents")
+      .select("*", { count: "exact", head: true })
+      .eq("project_id", project.id).eq("status", "draft");
+    const { count: overdueCount } = await db.from("alerts")
+      .select("*", { count: "exact", head: true })
+      .eq("project_id", project.id).eq("is_resolved", false)
+      .in("priority", ["critical", "high"]);
+
+    text += `📥 Входящие: <b>${inboxCount} новых</b>\n`;
+    text += `📤 Ожидают отправки: <b>${pendingSend || 0}</b>\n`;
+    text += `⚠️ Просрочено: <b>${overdueCount || 0}</b>\n`;
+
+    text += `\n📅 ${todayStr()}\n`;
+
+    const pf = await getTodayPlanFact(project.id);
     if (pf.count > 0) text += `${progressBar(pf.pct)} <b>${pf.pct}%</b> сегодня\n`;
-    if (inboxCount > 0) text += `📥 Входящих: <b>${inboxCount}</b>\n`;
-    if (alerts.counts.total > 0) text += `🔔 Алертов: <b>${alerts.counts.total}</b>\n`;
   }
+
   await sendOrEdit(chatId, session, user.user_id, text, [
-    [{ text: "📥 Входящие", callback_data: "pm:inbox" }, { text: "📤 Отправить", callback_data: "pm:send" }],
-    [{ text: "📊 Дашборд", callback_data: "pm:dash" }, { text: "🔔 Алерты", callback_data: "pm:alerts" }],
-    [{ text: "📋 Задачи", callback_data: "pm:tasks" }, { text: "⚡ Быстрые", callback_data: "pm:quick" }],
-    [{ text: "📂 Проект", callback_data: "proj:list" }, { text: "⚙️ Настройки", callback_data: "c:settings" }],
+    [{ text: `📥 Входящие${project ? ` (${await getInboxCount(project.id, "pm") || ""})` : ""}`, callback_data: "pm:inbox" }, { text: "📤 Отправить", callback_data: "pm:send" }],
+    [{ text: "📊 Обзор проекта", callback_data: "pm:dash" }, { text: "🔔 Алерты", callback_data: "pm:alerts" }],
+    [{ text: "⚡ Быстрые действия", callback_data: "pm:quick" }, { text: "📋 Задачи", callback_data: "pm:tasks" }],
+    [{ text: "⚙️ Настройки", callback_data: "c:settings" }, { text: "📂 Проект", callback_data: "proj:list" }],
     [{ text: "🚀 Открыть приложение", web_app: { url: APP_URL } }],
   ], "IDLE", ctx);
 }
