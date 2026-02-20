@@ -11,7 +11,7 @@ export async function sendMessage(
     parse_mode?: "HTML" | "Markdown" | "MarkdownV2";
   }
 ) {
-  return fetch(`${API}/sendMessage`, {
+  const res = await fetch(`${API}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -22,6 +22,11 @@ export async function sendMessage(
       disable_web_page_preview: true,
     }),
   });
+  if (!res.ok) {
+    const body = await res.text();
+    console.error(`[botUtils] sendMessage FAILED ${res.status}:`, body);
+  }
+  return res;
 }
 
 export async function editMessage(
