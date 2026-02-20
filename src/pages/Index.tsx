@@ -193,7 +193,7 @@ const Index = () => {
       case "appr":    return <Approvals projectId={pid} userRole={userRole} />;
       case "wflow":   return <Workflow />;
       case "sheets":  return <SheetsSync />;
-      case "docs":    return <Documents projectId={pid} />;
+      case "docs":    return <Documents projectId={pid} projectName={projectName} />;
       // ── Новые вкладки ──
       case "ai":      return <ForemenAI projectId={pid} projectName={projectName} userRole={userRole} />;
       case "report":  return <ReportPDF projectId={pid} projectName={projectName} />;

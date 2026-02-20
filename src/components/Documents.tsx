@@ -3,9 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import DocumentGenerator from "@/components/DocumentGenerator";
 import {
   FileUp, FileText, Loader2, Sparkles, Trash2, Eye,
-  Folder, FolderOpen, ChevronRight, Plus, ArrowLeft,
+  Folder, FolderOpen, ChevronRight, Plus, ArrowLeft, Wand2,
 } from "lucide-react";
 
 interface FolderEntry {
@@ -28,10 +29,12 @@ interface DocEntry {
 
 interface Props {
   projectId: string;
+  projectName?: string;
 }
 
-const Documents = ({ projectId }: Props) => {
+const Documents = ({ projectId, projectName }: Props) => {
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<"files" | "generator">("files");
   const fileRef = useRef<HTMLInputElement>(null);
   const [folders, setFolders] = useState<FolderEntry[]>([]);
   const [docs, setDocs] = useState<DocEntry[]>([]);
@@ -247,10 +250,39 @@ const Documents = ({ projectId }: Props) => {
   return (
     <div className="animate-fade-in p-2.5 space-y-3">
       {/* Header */}
-      <div className="text-[10px] font-bold uppercase tracking-wider text-t3 flex items-center gap-2">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] flex items-center gap-2">
         <FileText className="h-3 w-3" /> Документы
         <span className="flex-1 h-px bg-border" />
       </div>
+
+      {/* Tab Switcher */}
+      <div className="flex gap-1 bg-[hsl(var(--muted))] rounded-xl p-1">
+        <button
+          onClick={() => setActiveTab("files")}
+          className={`flex-1 h-8 rounded-lg text-[11px] font-medium transition-all flex items-center justify-center gap-1.5 ${
+            activeTab === "files"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-[hsl(var(--muted-foreground))]"
+          }`}
+        >
+          <Folder className="h-3 w-3" /> Файлы
+        </button>
+        <button
+          onClick={() => setActiveTab("generator")}
+          className={`flex-1 h-8 rounded-lg text-[11px] font-medium transition-all flex items-center justify-center gap-1.5 ${
+            activeTab === "generator"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-[hsl(var(--muted-foreground))]"
+          }`}
+        >
+          <Wand2 className="h-3 w-3" /> Генератор
+        </button>
+      </div>
+
+      {activeTab === "generator" ? (
+        <DocumentGenerator projectId={projectId} projectName={projectName || "Объект"} />
+      ) : (
+      <>
 
       {/* Breadcrumb */}
       <div className="flex items-center gap-1 text-[11px] flex-wrap">
@@ -433,6 +465,8 @@ const Documents = ({ projectId }: Props) => {
             </div>
           ))}
         </>
+      )}
+      </>
       )}
     </div>
   );

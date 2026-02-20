@@ -1253,6 +1253,60 @@ export type Database = {
           },
         ]
       }
+      generated_documents: {
+        Row: {
+          ai_content: string | null
+          created_at: string
+          created_by: string
+          file_type: string
+          file_url: string | null
+          id: string
+          params: Json | null
+          project_id: string | null
+          template_type: string
+          title: string
+        }
+        Insert: {
+          ai_content?: string | null
+          created_at?: string
+          created_by: string
+          file_type?: string
+          file_url?: string | null
+          id?: string
+          params?: Json | null
+          project_id?: string | null
+          template_type: string
+          title: string
+        }
+        Update: {
+          ai_content?: string | null
+          created_at?: string
+          created_by?: string
+          file_type?: string
+          file_url?: string | null
+          id?: string
+          params?: Json | null
+          project_id?: string | null
+          template_type?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_stats"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "generated_documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       materials: {
         Row: {
           category: string | null
