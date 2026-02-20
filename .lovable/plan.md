@@ -1,117 +1,174 @@
 
-
-# Фаза 1+2: Стабилизация и рефакторинг Telegram-бота
+# Фаза 1 (расширенная): Стабилизация + Фиксы аудита
 
 ## Обзор
 
-8 задач в двух фазах: защита от подделок и спама, фикс багов, увеличение TTL, обработка ошибок, модуляризация, сохранение файлов в Storage, проверка RLS.
+Объединяем оригинальный план (8 задач) с результатами аудита (10 находок). Итого 12 задач в двух фазах.
 
 ---
 
-## Фаза 1 — Стабилизация
+## Фаза 1 — Стабилизация и фиксы аудита
 
-### 1. Подключить validateTelegram в webhook
+### 1. Webhook-секрет для telegram-bot
 
-**Проблема:** Сейчас бот принимает любые POST-запросы без проверки подлинности.
+Добавить в `serve()` (строка 1628) проверку заголовка `x-telegram-bot-api-secret-token` против env `TELEGRAM_WEBHOOK_SECRET`. Если не совпадает — 401. Это защитит webhook от поддельных запросов.
+
+Потребуется секрет `TELEGRAM_WEBHOOK_SECRET`.
+
+### 2. Auth middleware во ВСЕ незащищённые Edge Functions
+
+Импортировать `authenticate` из `_shared/authMiddleware.ts` и добавить проверку в начало:
+- `sync-1c/index.ts`
+- `google-sheets-sync/index.ts`
+- `telegram-notify/index.ts`
+- `telegram-manage/index.ts`
+- `analyze-document/index.ts`
+- `parse-project-document/index.ts`
+
+Без валидного JWT или Telegram initData — возвращать 401.
+
+### 3. Замена CORS `*` на конкретный домен
+
+Во всех Edge Functions заменить:
+```
+"Access-Control-Allow-Origin": "*"
+```
+на:
+```
+"Access-Control-Allow-Origin": "https://smr-sfera.lovable.app"
+```
+А также добавить preview-домен через проверку Origin:
+```
+const ALLOWED_ORIGINS = [
+  "https://smr-sfera.lovable.app",
+  "https://id-preview--fe942628-85b8-4407-a858-132ee496d745.lovable.app"
+];
+```
+
+Затронутые файлы: `sync-1c`, `google-sheets-sync`, `telegram-notify`, `telegram-manage`, `analyze-document`, `parse-project-document`, `ai-chat`.
+
+### 4. Rate limiting (в telegram-bot)
+
+Импортировать `checkRateLimit` из `_shared/rateLimit.ts` в `handleUpdate`. Ограничение: 30 запросов / 60 секунд на chatId. При превышении — отправить "Слишком много запросов" и выйти.
+
+**Важно:** in-memory Map сбрасывается при cold start. Это допустимо для Telegram-бота (защита от flood в рамках одного warm instance). Для API-функций проблема менее критична, т.к. они уже защищены auth middleware.
+
+### 5. Фикс inbox для прорабов
+
+**Проблема:** строка 1584 передаёт `"foreman"` в `screenInbox`, но реальные роли — `foreman1/2/3`. Функции `getInboxCount` (стр. 156) и `getInboxItems` (стр. 161) используют `.contains("to_roles", [toRole])` — для массива ролей не работает.
 
 **Решение:**
-- В `serve()` (строка 1628) добавить проверку заголовка `x-telegram-bot-api-secret-token`
-- Если секрет не совпадает, возвращать 401
-- Секрет `TELEGRAM_WEBHOOK_SECRET` нужно будет задать и зарегистрировать через `setWebhook` API с параметром `secret_token`
-- Также использовать `validateInitDataAsync` из `_shared/validateTelegram.ts` для Mini App авторизации (если потребуется)
+- Изменить `getInboxCount` и `getInboxItems` для приёма массива ролей вместо одной строки
+- Использовать `.or()` фильтр: `to_roles.cs.{foreman},...cs.{foreman1},...cs.{foreman2},...cs.{foreman3}`
+- На строке 1584: `screenInbox(chatId, user, session, ["foreman","foreman1","foreman2","foreman3"], "f")`
+- В `DOC_FSM_MAP` (стр. 1377-1384): заменить recipients `"foreman1"` на `["foreman1","foreman2","foreman3"]` для PTO/Inspector документов, чтобы попадали во входящие любому прорабу
 
-### 2. Подключить rateLimit
+### 6. Увеличить TTL сессий до 8 часов
 
-**Проблема:** Нет защиты от спама — один пользователь может отправлять неограниченное количество запросов.
+Строка 90: заменить `7200000` на `28800000` (8 часов).
 
-**Решение:**
-- Импортировать `checkRateLimit` из `_shared/rateLimit.ts` в начало `handleUpdate`
-- Ограничение: 30 запросов / 60 секунд на `chatId`
-- При превышении — отправлять `tgAnswer` с текстом "Слишком много запросов" и выходить
+### 7. Try/catch + safeFn на все screen-функции
 
-### 3. Фикс бага inbox для прорабов
+- Обернуть `handleUpdate` (стр. 1390) в глобальный try/catch с fallback-сообщением: "Произошла ошибка. Попробуйте /start"
+- Добавить обёртку `safeFn` для всех вызовов screen-функций
+- Логировать ошибки в `bot_audit_log` с `result: "error"`
 
-**Проблема:** На строке 1584 inbox вызывается с ролью `"foreman"`, но в БД роли хранятся как `foreman1`, `foreman2`, `foreman3`. Функции `getInboxCount`/`getInboxItems` ищут `contains("to_roles", ["foreman"])` — совпадений нет.
+### 8. Фикс bot-notify-worker: колонки БД
 
-**Решение:**
-- Изменить `screenInbox` на строке 1584: передавать массив ролей `["foreman", "foreman1", "foreman2", "foreman3"]`
-- Обновить `getInboxCount` и `getInboxItems` для поддержки нескольких ролей (использовать `.or()` фильтр)
-- Аналогично обновить `DOC_FSM_MAP` recipients — документы, адресованные `foreman1`, должны попадать во входящие любому прорабу
+**Проблема:** `retry_count` не существует в `bot_event_queue` — колонка называется `attempts`. Также `sent_at` не существует — используется `processed_at`.
 
-### 4. Увеличить TTL сессий до 8 часов
+**Изменения в bot-notify-worker/index.ts:**
+- Строка 264: `.lt("retry_count", 3)` → `.lt("attempts", 3)`
+- Строка 334: `sent_at: new Date().toISOString()` → `processed_at: new Date().toISOString()`
+- Строка 340: `retry_count: (event.retry_count || 0) + 1` → `attempts: (event.attempts || 0) + 1`
+- Строка 351: `.lt("sent_at", ...)` → `.lt("processed_at", ...)`
 
-**Проблема:** Текущий TTL = 2 часа (строка 90: `7200000` мс). На стройке рабочий день длиннее.
+**Примечание:** в схеме `bot_event_queue` колонка `sent_at` действительно существует (видна в описании таблицы), но `retry_count` — нет, есть только `attempts`. Проверим и исправим оба варианта по реальной схеме.
 
-**Решение:**
-- Заменить `7200000` на `28800000` (8 часов) в `saveSession`
-- Обновить `cleanup_expired_bot_sessions` — функция уже работает корректно (чистит по `expires_at`)
+### 9. Удалить дубль: bot-notify
 
-### 5. Try/catch на все screen-функции
+`bot-notify` и `bot-notify-worker` делают одно и то же (обработка очереди уведомлений). `bot-notify-worker` более полная версия (поддерживает v4 events, DND per-user, resolveTargets).
 
-**Проблема:** Если любая screen-функция падает (ошибка БД, null-reference), пользователь видит "зависший" бот без ответа.
+**Действие:** Удалить `supabase/functions/bot-notify/index.ts` и запись `[functions.bot-notify]` из `config.toml`. Удалить деплой через инструмент.
 
-**Решение:**
-- Обернуть `handleUpdate` в try/catch с fallback-сообщением: "Произошла ошибка. Попробуйте /start"
-- Добавить обёртку `safeFn` для всех вызовов screen-функций в диспетчере
-- Логировать ошибку в `bot_audit_log` с `result: "error"`
+### 10. Удалить дубль: telegram-scheduler
+
+`telegram-scheduler` и `bot-scheduler` обе делают daily_summary / report_reminder, но `bot-scheduler` — более полная v4 версия с MSK-тайммингами и plan/fact отчётами.
+
+**Действие:** Удалить `supabase/functions/telegram-scheduler/index.ts` и запись `[functions.telegram-scheduler]` из `config.toml`. Удалить деплой через инструмент.
+
+### 11. Добавить индексы на ключевые колонки
+
+Создать миграцию с индексами:
+```sql
+CREATE INDEX IF NOT EXISTS idx_bot_sessions_chat_id ON bot_sessions(chat_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON user_roles(user_id);
+CREATE INDEX IF NOT EXISTS idx_alerts_project_id ON alerts(project_id);
+CREATE INDEX IF NOT EXISTS idx_bot_event_queue_status ON bot_event_queue(status, scheduled_at);
+```
+
+### 12. Фикс OOM в analyze-document
+
+Заменить `btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))` на chunk-based encoding (как уже сделано в `parse-project-document`):
+```typescript
+const uint8 = new Uint8Array(arrayBuffer);
+let base64Content = "";
+const chunkSize = 8192;
+for (let i = 0; i < uint8.length; i += chunkSize) {
+  base64Content += String.fromCharCode(...uint8.slice(i, i + chunkSize));
+}
+base64Content = btoa(base64Content);
+```
 
 ---
 
-## Фаза 2 — Рефакторинг
+## Фаза 2 — Рефакторинг (без изменений)
 
-### 6. Разнести index.ts на модули
+### 13. Разнести index.ts на модули
 
-**Текущее состояние:** 1640 строк в одном файле.
+Как в оригинальном плане:
+- `_shared/botUtils.ts` — обновить (tgSend/tgEdit/tgAnswer/tgDeleteMsg)
+- `_shared/botFSM.ts` — перезапись (v4 сессии)
+- `_shared/botScreens.ts` — перезапись (общие v4 экраны)
+- `_shared/botRoleScreens.ts` — новый (ролевые меню)
+- `_shared/botDocFSM.ts` — новый (Document/Photo FSM)
+- `index.ts` — только диспетчер (~200 строк)
 
-**Ограничение Deno Edge Functions:** Нельзя использовать подпапки для одной функции, но можно импортировать из `_shared/`.
+### 14. Сохранение файлов в Supabase Storage
 
-**План разнесения:**
-- `_shared/botUtils.ts` — уже существует (tg API). Перенести туда `tgSend/tgEdit/tgAnswer/tgDeleteMsg` из index.ts (заменить дубликаты)
-- `_shared/botFSM.ts` — уже существует но устарел. Перенести туда `getSession/saveSession/clearSession` + типы `BotState`
-- `_shared/botScreens.ts` — уже существует но не используется v4. Перенести общие экраны: `screenProjectsList`, `screenDashboard`, `screenAlerts`, `screenSettings`, `screenTasks` и т.д.
-- `_shared/botRoleScreens.ts` — **новый файл**. Все ролевые меню и send-экраны (Director, PM, OPR, KM, KMD, Supply, Production, Foreman, PTO, Inspector)
-- `_shared/botDocFSM.ts` — **новый файл**. Document FSM + Photo FSM + `DOC_FSM_MAP`
-- `index.ts` — остаётся только диспетчер `handleUpdate` + `serve()` (~200 строк)
+В `handleDocFile` и `handlePhotoFile` — скачать файл через fetch, загрузить в bucket (`project-documents` или `photo-reports`), сохранить постоянный URL.
 
-### 7. Сохранение файлов в Supabase Storage
-
-**Проблема:** Сейчас бот сохраняет временные ссылки Telegram (`https://api.telegram.org/file/bot.../...`). Эти ссылки протухают через ~1 час.
-
-**Решение:**
-- В `handleDocFile` и `handlePhotoFile` после получения `file_url` от TG:
-  1. Скачать файл через `fetch(fileUrl)`
-  2. Загрузить в bucket `project-documents` (уже существует, приватный) или `photo-reports` (для фото, публичный)
-  3. Сохранить постоянный URL из Storage в `bot_documents`/`bot_inbox`
-- Путь файла: `{project_id}/{doc_type}/{date}_{filename}`
-
-### 8. Проверка RLS-политик
-
-**Текущее состояние по таблицам бота:**
-- `bot_sessions` — RLS OK (service_only для записи, auth для чтения)
-- `bot_documents` — RLS OK (service_only для записи, project-based для чтения)
-- `bot_inbox` — RLS OK (service_only для записи, project-based для чтения)
-- `bot_event_queue` — RLS OK (service_only)
-- `bot_audit_log` — RLS OK (service_only + pm/director чтение)
-
-Все таблицы бота используют `service_role_key` для записи, что корректно. Клиентский доступ ограничен чтением по проекту. **Дополнительных миграций не требуется.**
+### 15. RLS — OK, дополнительных миграций не требуется
 
 ---
 
 ## Технические детали
 
-### Файлы, которые будут изменены:
-1. `supabase/functions/telegram-bot/index.ts` — основной рефакторинг (сокращение с 1640 до ~200 строк)
-2. `supabase/functions/_shared/botUtils.ts` — обновление (удалить старые хелперы, добавить v4)
-3. `supabase/functions/_shared/botFSM.ts` — полная перезапись под v4 сессии
-4. `supabase/functions/_shared/botScreens.ts` — полная перезапись (общие экраны v4)
-5. `supabase/functions/_shared/botRoleScreens.ts` — новый файл (ролевые экраны)
-6. `supabase/functions/_shared/botDocFSM.ts` — новый файл (FSM документов и фото)
+### Файлы, которые будут изменены (Фаза 1):
+1. `supabase/functions/telegram-bot/index.ts` — webhook secret, rate limit, inbox fix, TTL, try/catch
+2. `supabase/functions/bot-notify-worker/index.ts` — фикс колонок
+3. `supabase/functions/sync-1c/index.ts` — auth + CORS
+4. `supabase/functions/google-sheets-sync/index.ts` — auth + CORS
+5. `supabase/functions/telegram-notify/index.ts` — auth + CORS
+6. `supabase/functions/telegram-manage/index.ts` — auth + CORS
+7. `supabase/functions/analyze-document/index.ts` — auth + CORS + OOM fix
+8. `supabase/functions/parse-project-document/index.ts` — auth + CORS
 
-### Порядок выполнения:
-1. Сначала Фаза 1 (пункты 1-5) — быстрые фиксы в текущем index.ts
-2. Затем Фаза 2 (пункты 6-8) — рефакторинг с разнесением по модулям
-3. Деплой и проверка
+### Файлы, которые будут удалены:
+- `supabase/functions/bot-notify/index.ts`
+- `supabase/functions/telegram-scheduler/index.ts`
+
+### Новая миграция:
+- Индексы на `bot_sessions.chat_id`, `profiles.user_id`, `user_roles.user_id`, `alerts.project_id`, `bot_event_queue(status, scheduled_at)`
 
 ### Новый секрет:
-- `TELEGRAM_WEBHOOK_SECRET` — случайная строка для верификации webhook (пункт 1)
+- `TELEGRAM_WEBHOOK_SECRET`
 
+### Порядок выполнения:
+1. Добавить секрет `TELEGRAM_WEBHOOK_SECRET`
+2. Создать миграцию с индексами
+3. Фиксы Фазы 1 (задачи 1-12)
+4. Удалить `bot-notify` и `telegram-scheduler`
+5. Деплой всех функций
+6. Фаза 2 (задачи 13-15) — отдельным этапом
