@@ -5,7 +5,7 @@ import { getCorsHeaders } from "../_shared/corsHeaders.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const DO_MODEL_ACCESS_KEY = Deno.env.get("DO_MODEL_ACCESS_KEY");
 
 Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
@@ -59,12 +59,12 @@ Deno.serve(async (req) => {
     let results: any[] = [];
 
     // Get embedding from OpenAI-compatible endpoint
-    if (LOVABLE_API_KEY) {
+    if (DO_MODEL_ACCESS_KEY) {
       try {
-        const embResp = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+        const embResp = await fetch("https://inference.do-ai.run/v1/embeddings", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            Authorization: `Bearer ${DO_MODEL_ACCESS_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({

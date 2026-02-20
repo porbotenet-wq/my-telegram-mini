@@ -38,7 +38,7 @@ async function searchNorms(query: string, apiKey: string): Promise<any[]> {
 
     // Try embedding search
     try {
-      const embResp = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+      const embResp = await fetch("https://inference.do-ai.run/v1/embeddings", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -132,8 +132,8 @@ Deno.serve(async (req) => {
 
   try {
     const { messages, projectName, userRole, systemPrompt, mode = "all" } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const DO_MODEL_ACCESS_KEY = Deno.env.get("DO_MODEL_ACCESS_KEY");
+    if (!DO_MODEL_ACCESS_KEY) throw new Error("DO_MODEL_ACCESS_KEY is not configured");
 
     const contextNote = `Контекст: Проект "${projectName || "Неизвестный"}". Роль пользователя: ${userRole || "не указана"}.`;
     let finalSystemPrompt = systemPrompt || (SYSTEM_PROMPT + "\n\n" + contextNote);
@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
     if (mode === "norms" || mode === "all") {
       const lastUserMsg = [...(messages || [])].reverse().find((m: any) => m.role === "user");
       if (lastUserMsg?.content) {
-        normChunks = await searchNorms(lastUserMsg.content, LOVABLE_API_KEY);
+        normChunks = await searchNorms(lastUserMsg.content, DO_MODEL_ACCESS_KEY);
         if (normChunks.length > 0) {
           finalSystemPrompt += buildNormContext(normChunks);
         }
@@ -160,14 +160,14 @@ Deno.serve(async (req) => {
         source_url: c.source_url,
       }));
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://inference.do-ai.run/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${DO_MODEL_ACCESS_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "openai-gpt-5-mini",
         messages: [
           { role: "system", content: finalSystemPrompt },
           ...messages,
