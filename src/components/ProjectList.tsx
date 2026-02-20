@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Plus, LogOut, User } from "lucide-react";
+import { Loader2, Plus, LogOut, User, Building2, TrendingUp, AlertTriangle, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import ProfileSettings from "@/components/ProfileSettings";
+import { format } from "date-fns";
 
 interface Project {
   id: string;
@@ -25,18 +26,18 @@ interface ProjectKPI {
   progressPct: number;
 }
 
-const statusConfig: Record<string, { text: string; led: string; badge: string }> = {
-  draft:     { text: "Черновик",  led: "led-blue",  badge: "bg-[hsl(var(--blue-dim))] text-[hsl(var(--blue))]" },
-  active:    { text: "Активный",  led: "led-green", badge: "bg-[hsl(var(--green-dim))] text-primary" },
-  paused:    { text: "Пауза",    led: "led-amber", badge: "bg-[hsl(var(--amber-dim))] text-[hsl(var(--amber))]" },
-  completed: { text: "Завершён", led: "led-blue",  badge: "bg-[hsl(var(--blue-dim))] text-[hsl(var(--blue))]" },
+const statusLed: Record<string, { bg: string; glow: string }> = {
+  draft:     { bg: "bg-[hsl(var(--blue))]",  glow: "shadow-[0_0_6px_hsl(var(--blue)/0.4)]" },
+  active:    { bg: "bg-primary",              glow: "shadow-[0_0_6px_hsl(var(--green-glow))]" },
+  paused:    { bg: "bg-[hsl(var(--amber))]",  glow: "shadow-[0_0_6px_hsl(var(--amber)/0.4)]" },
+  completed: { bg: "bg-[hsl(var(--blue))]",   glow: "shadow-[0_0_6px_hsl(var(--blue)/0.4)]" },
 };
 
-const placeholderGradients = [
-  "from-[hsl(220,25%,12%)] to-[hsl(220,18%,8%)]",
-  "from-[hsl(200,20%,14%)] to-[hsl(220,22%,8%)]",
-  "from-[hsl(240,18%,14%)] to-[hsl(220,25%,6%)]",
-];
+const workTypeLabels: Record<string, string> = {
+  spk: "СПК",
+  nvf: "НВФ",
+  both: "НВФ • СПК",
+};
 
 interface ProjectListProps {
   onSelectProject: (id: string, name?: string) => void;
@@ -59,7 +60,6 @@ const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
 
       if (!error && data) {
         setProjects(data as Project[]);
-        // Load KPIs in background
         loadKPIs(data.map((p: any) => p.id));
       }
       setLoading(false);
@@ -69,17 +69,19 @@ const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
 
   const loadKPIs = async (projectIds: string[]) => {
     const results: Record<string, ProjectKPI> = {};
-
     await Promise.all(
       projectIds.map(async (pid) => {
-        const [alertsRes, crewsRes, pfRes] = await Promise.all([
+        const [alertsRes, crewsRes, floorsRes] = await Promise.all([
           supabase.from("alerts").select("id", { count: "exact", head: true }).eq("project_id", pid).eq("is_resolved", false),
           supabase.from("crews").select("id", { count: "exact", head: true }).eq("project_id", pid).eq("is_active", true),
-          supabase.from("plan_fact").select("plan_value, fact_value").eq("project_id", pid),
+          supabase.from("floors").select("modules_plan, modules_fact, facade_id").in(
+            "facade_id",
+            (await supabase.from("facades").select("id").eq("project_id", pid)).data?.map((f: any) => f.id) || []
+          ),
         ]);
 
-        const totalPlan = (pfRes.data || []).reduce((s, r) => s + Number(r.plan_value), 0);
-        const totalFact = (pfRes.data || []).reduce((s, r) => s + Number(r.fact_value), 0);
+        const totalPlan = (floorsRes.data || []).reduce((s, r) => s + Number(r.modules_plan), 0);
+        const totalFact = (floorsRes.data || []).reduce((s, r) => s + Number(r.modules_fact), 0);
         const progressPct = totalPlan > 0 ? Math.round((totalFact / totalPlan) * 100) : 0;
 
         results[pid] = {
@@ -89,7 +91,6 @@ const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
         };
       })
     );
-
     setKpis(results);
   };
 
@@ -131,103 +132,123 @@ const ProjectList = ({ onSelectProject, onCreateNew }: ProjectListProps) => {
       <ProfileSettings open={settingsOpen} onOpenChange={setSettingsOpen} />
 
       {/* Project Cards */}
-      <div className="p-3 space-y-3 pb-24">
+      <div className="p-3 space-y-4 pb-28">
         {loading ? (
-          <div className="flex justify-center py-12">
+          <div className="flex justify-center py-16">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
+        ) : projects.length === 0 ? (
+          /* Empty state */
+          <div className="flex flex-col items-center justify-center py-16 gap-4">
+            <Building2 size={64} className="text-t3 opacity-20" />
+            <div className="text-[14px] text-t2 font-semibold">Создайте первый объект</div>
+            <button
+              onClick={onCreateNew}
+              className="bg-primary text-primary-foreground rounded-xl px-6 py-3 text-[13px] font-bold hover:brightness-110 active:scale-[0.97] transition-all"
+            >
+              Новый объект
+            </button>
+          </div>
         ) : (
-          <>
-            {projects.map((p, i) => {
-              const st = statusConfig[p.status] || statusConfig.draft;
-              const kpi = kpis[p.id];
-              const heroImg = p.cover_image_url || p.photo_url;
-              const grad = placeholderGradients[i % placeholderGradients.length];
+          projects.map((p, index) => {
+            const led = statusLed[p.status] || statusLed.draft;
+            const kpi = kpis[p.id];
+            const heroImg = p.cover_image_url || p.photo_url;
+            const wtLabel = workTypeLabels[p.work_type] || p.work_type;
+            const subtitle = [p.city, wtLabel].filter(Boolean).join(" • ");
 
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => onSelectProject(p.id, p.name)}
-                  className={`stagger-item w-full text-left rounded-2xl overflow-hidden border border-border hover:border-primary/20 transition-all active:scale-[0.98] led-top ${st.led}`}
-                >
-                  {/* Hero Image */}
-                  <div className="relative h-[200px] w-full">
-                    {heroImg ? (
-                      <img
-                        src={heroImg}
-                        alt={p.name}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className={`w-full h-full bg-gradient-to-br ${grad} flex items-center justify-center`}>
-                        <span className="text-[48px] opacity-20">🏗️</span>
-                      </div>
-                    )}
+            return (
+              <button
+                key={p.id}
+                onClick={() => onSelectProject(p.id, p.name)}
+                className="stagger-item w-full text-left h-[260px] relative rounded-2xl overflow-hidden shadow-lg active:scale-[0.98] transition-transform duration-150"
+                style={{ animationDelay: `${index * 80}ms` }}
+              >
+                {/* Hero image or placeholder */}
+                {heroImg ? (
+                  <img
+                    src={heroImg}
+                    alt={p.name}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--bg2))] to-[hsl(var(--bg3))] flex items-center justify-center">
+                    <Building2 size={48} className="text-t3 opacity-[0.15]" />
+                  </div>
+                )}
 
-                    {/* Gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--bg0)/0.92)] via-[hsl(var(--bg0)/0.3)] to-transparent" />
+                {/* LED strip top */}
+                <div className={`absolute top-0 left-0 right-0 h-[2px] ${led.bg} ${led.glow} z-10`} />
 
-                    {/* Content on overlay */}
-                    <div className="absolute bottom-0 left-0 right-0 p-3.5">
-                      <div className="flex items-end justify-between mb-2">
-                        <div>
-                          <h3 className="text-[16px] font-bold text-[hsl(var(--t1))] leading-tight mb-0.5">{p.name}</h3>
-                          {(p.city || p.address) && (
-                            <div className="text-[10px] text-t2">📍 {[p.city, p.address].filter(Boolean).join(", ")}</div>
-                          )}
-                        </div>
-                        <span className={`text-[9px] font-mono font-semibold px-2 py-0.5 rounded-lg ${st.badge}`}>
-                          {st.text}
-                        </span>
-                      </div>
+                {/* Client badge */}
+                {p.client_name && (
+                  <div className="absolute top-3 right-3 z-10 bg-black/40 backdrop-blur-sm rounded-lg px-2 py-1 text-[9px] text-white/80 font-medium max-w-[140px] truncate">
+                    {p.client_name}
+                  </div>
+                )}
 
-                      {/* Mini KPI row */}
-                      <div className="flex items-center gap-3 mt-1">
-                        <div className="flex items-center gap-1">
-                          <span className="text-[10px] text-t3">📊</span>
-                          <span className="num text-[11px] font-semibold text-t1">{kpi?.progressPct ?? "—"}%</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-[10px] text-t3">🔔</span>
-                          <span className={`num text-[11px] font-semibold ${(kpi?.alertsCount || 0) > 0 ? "text-[hsl(var(--red))]" : "text-t2"}`}>
-                            {kpi?.alertsCount ?? "—"}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-[10px] text-t3">👷</span>
-                          <span className="num text-[11px] font-semibold text-t2">{kpi?.crewsCount ?? "—"}</span>
-                        </div>
-                      </div>
+                {/* Gradient overlay */}
+                <div
+                  className="absolute inset-0 z-[1]"
+                  style={{
+                    background: "linear-gradient(to top, hsl(var(--bg0)) 0%, hsl(var(--bg0) / 0.7) 35%, transparent 60%)"
+                  }}
+                />
+
+                {/* Content on overlay */}
+                <div className="absolute bottom-0 left-0 right-0 p-4 space-y-1.5 z-[2]">
+                  <h3
+                    className="text-[20px] font-bold text-white leading-tight"
+                    style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}
+                  >
+                    {p.name}
+                  </h3>
+
+                  {subtitle && (
+                    <div className="text-[12px] text-white/70">{subtitle}</div>
+                  )}
+
+                  {p.start_date && p.end_date && (
+                    <div className="text-[11px] text-white/50">
+                      {format(new Date(p.start_date), "dd.MM.yyyy")} — {format(new Date(p.end_date), "dd.MM.yyyy")}
+                    </div>
+                  )}
+
+                  {/* KPI chips */}
+                  <div className="flex gap-2 mt-2">
+                    <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm rounded-lg px-2.5 py-1">
+                      <TrendingUp size={12} className="text-primary" />
+                      <span className="num text-[13px] font-bold text-white">{kpi?.progressPct ?? "—"}%</span>
+                    </div>
+                    <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm rounded-lg px-2.5 py-1">
+                      <AlertTriangle size={12} className={(kpi?.alertsCount || 0) > 0 ? "text-destructive" : "text-white/50"} />
+                      <span className="num text-[13px] font-bold text-white">{kpi?.alertsCount ?? "—"}</span>
+                    </div>
+                    <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm rounded-lg px-2.5 py-1">
+                      <Users size={12} className="text-white/50" />
+                      <span className="num text-[13px] font-bold text-white">{kpi?.crewsCount ?? "—"}</span>
                     </div>
                   </div>
+                </div>
 
-                  {/* Progress bar */}
-                  <div className="h-[2px] bg-bg2">
-                    <div
-                      className="h-full bg-primary transition-all duration-500"
-                      style={{ width: `${kpi?.progressPct || 0}%` }}
-                    />
-                  </div>
-                </button>
-              );
-            })}
-
-            {projects.length === 0 && (
-              <div className="text-center py-12">
-                <div className="text-3xl mb-3">📋</div>
-                <div className="text-[13px] text-t2 font-semibold">Нет объектов</div>
-                <div className="text-[10px] text-t3 mt-1">Создайте первый объект</div>
-              </div>
-            )}
-          </>
+                {/* Progress bar bottom */}
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[hsl(var(--bg3))] z-[3]">
+                  <div
+                    className="h-full bg-primary rounded-r-full transition-all duration-500"
+                    style={{ width: `${kpi?.progressPct || 0}%` }}
+                  />
+                </div>
+              </button>
+            );
+          })
         )}
       </div>
 
       {/* Floating FAB */}
       <button
         onClick={onCreateNew}
-        className="fixed bottom-20 right-4 z-50 w-14 h-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all"
+        className="fixed bottom-20 right-4 z-50 w-14 h-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center shadow-[0_0_16px_hsl(var(--green-glow))] hover:brightness-110 active:scale-[0.95] transition-all"
       >
         <Plus size={24} />
       </button>
