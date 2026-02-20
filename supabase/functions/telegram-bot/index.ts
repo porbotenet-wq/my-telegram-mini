@@ -87,7 +87,7 @@ async function getSession(chatId: number) {
 }
 async function saveSession(chatId: number, userId: string, state: string, context: any, msgId?: number) {
   await db.from("bot_sessions").upsert({ chat_id: String(chatId), user_id: userId, state, context: context || {},
-    message_id: msgId ?? null, updated_at: new Date().toISOString(), expires_at: new Date(Date.now() + 7200000).toISOString() }, { onConflict: "chat_id" });
+    message_id: msgId ?? null, updated_at: new Date().toISOString(), expires_at: new Date(Date.now() + 28800000).toISOString() }, { onConflict: "chat_id" });
 }
 async function clearSession(chatId: number) {
   await db.from("bot_sessions").update({ state: "IDLE", context: {} }).eq("chat_id", String(chatId));
@@ -153,14 +153,18 @@ async function getDailyLogs(projectId: string, limit = 5) {
     .eq("project_id", projectId).order("date", { ascending: false }).limit(limit);
   return data || [];
 }
-async function getInboxCount(projectId: string, toRole: string) {
+async function getInboxCount(projectId: string, toRoles: string | string[]) {
+  const roles = Array.isArray(toRoles) ? toRoles : [toRoles];
+  const orFilter = roles.map(r => `to_roles.cs.{${r}}`).join(",");
   const { count } = await db.from("bot_inbox").select("*", { count: "exact", head: true })
-    .eq("project_id", projectId).eq("status", "new").contains("to_roles", [toRole]);
+    .eq("project_id", projectId).eq("status", "new").or(orFilter);
   return count || 0;
 }
-async function getInboxItems(projectId: string, toRole: string, limit = 5) {
+async function getInboxItems(projectId: string, toRoles: string | string[], limit = 5) {
+  const roles = Array.isArray(toRoles) ? toRoles : [toRoles];
+  const orFilter = roles.map(r => `to_roles.cs.{${r}}`).join(",");
   const { data } = await db.from("bot_inbox").select("id, title, type, from_role, status, created_at, description, file_url")
-    .eq("project_id", projectId).contains("to_roles", [toRole]).order("created_at", { ascending: false }).limit(limit);
+    .eq("project_id", projectId).or(orFilter).order("created_at", { ascending: false }).limit(limit);
   return data || [];
 }
 
@@ -184,7 +188,7 @@ async function sendOrEdit(chatId: number, session: any, userId: string, text: st
 // ══════════════════════════════════════════════════════════════
 // Universal Inbox screen (works for any role)
 // ══════════════════════════════════════════════════════════════
-async function screenInbox(chatId: number, user: BotUser, session: any, role: string, prefix: string) {
+async function screenInbox(chatId: number, user: BotUser, session: any, role: string | string[], prefix: string) {
   const projectId = session?.context?.project_id;
   if (!projectId) return routeToMenu(chatId, user, session);
   const items = await getInboxItems(projectId, role);
@@ -1374,13 +1378,13 @@ const DOC_FSM_MAP: Record<string, { label: string; recipients: string[] }> = {
   "f:doc:stage_fr": { label: "Этапный: каркас", recipients: ["pm", "pto"] },
   "f:doc:stage_gl": { label: "Этапный: заполнение", recipients: ["pm", "pto"] },
   // PTO docs
-  "pto:doc:brackets": { label: "АОСР Кронштейны", recipients: ["pm", "foreman1"] },
-  "pto:doc:frame": { label: "АОСР Каркас", recipients: ["pm", "foreman1"] },
-  "pto:doc:glass": { label: "АОСР Заполнение", recipients: ["pm", "foreman1"] },
+  "pto:doc:brackets": { label: "АОСР Кронштейны", recipients: ["pm", "foreman1", "foreman2", "foreman3"] },
+  "pto:doc:frame": { label: "АОСР Каркас", recipients: ["pm", "foreman1", "foreman2", "foreman3"] },
+  "pto:doc:glass": { label: "АОСР Заполнение", recipients: ["pm", "foreman1", "foreman2", "foreman3"] },
   "pto:doc:schemes": { label: "Исполнительные схемы", recipients: ["pm"] },
   // Inspector docs
-  "insp:doc:quality": { label: "Замечание по качеству", recipients: ["pm", "foreman1"] },
-  "insp:doc:stop": { label: "Остановка работ", recipients: ["pm", "director", "foreman1"] },
+  "insp:doc:quality": { label: "Замечание по качеству", recipients: ["pm", "foreman1", "foreman2", "foreman3"] },
+  "insp:doc:stop": { label: "Остановка работ", recipients: ["pm", "director", "foreman1", "foreman2", "foreman3"] },
   "insp:doc:photo": { label: "Фотофиксация нарушения", recipients: ["pm"] },
 };
 
@@ -1581,7 +1585,7 @@ async function handleUpdate(update: any) {
 
     // ── Foreman ──
     if (data === "f:menu") return screenForemanMenu(chatId, user, session);
-    if (data === "f:inbox") return screenInbox(chatId, user, session, "foreman", "f");
+    if (data === "f:inbox") return screenInbox(chatId, user, session, ["foreman", "foreman1", "foreman2", "foreman3"], "f");
     if (data === "f:send") return screenForemanSend(chatId, user, session);
     if (data === "f:report") return screenForemanReportFacade(chatId, user, session);
     if (data === "f:photo") return screenForemanPhoto(chatId, user, session);
@@ -1625,16 +1629,67 @@ async function handleUpdate(update: any) {
   }
 }
 
+import { checkRateLimit } from "../_shared/rateLimit.ts";
+
+const WEBHOOK_SECRET = Deno.env.get("TELEGRAM_WEBHOOK_SECRET") || "";
+
 serve(async (req) => {
   if (req.method !== "POST") return new Response("OK");
+
+  // Webhook secret verification
+  if (WEBHOOK_SECRET) {
+    const headerSecret = req.headers.get("x-telegram-bot-api-secret-token") || "";
+    if (headerSecret !== WEBHOOK_SECRET) {
+      console.error("[Bot v4] Invalid webhook secret");
+      return new Response("Unauthorized", { status: 401 });
+    }
+  }
+
   try {
     const update = await req.json();
+    const chatId = update.message?.chat?.id || update.callback_query?.from?.id;
+
     console.log("[Bot v4]", JSON.stringify({
-      text: update.message?.text, chat: update.message?.chat?.id || update.callback_query?.from?.id, cb: update.callback_query?.data,
+      text: update.message?.text, chat: chatId, cb: update.callback_query?.data,
     }));
+
+    // Rate limiting: 30 requests / 60 seconds per chatId
+    if (chatId) {
+      const { allowed } = checkRateLimit(`bot:${chatId}`, 30, 60_000);
+      if (!allowed) {
+        const tg = `https://api.telegram.org/bot${BOT_TOKEN}`;
+        await fetch(`${tg}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text: "⏳ Слишком много запросов. Подождите минуту." }),
+        });
+        return new Response("OK");
+      }
+    }
+
     await handleUpdate(update);
   } catch (err) {
     console.error("[Bot v4] ERROR:", err instanceof Error ? err.stack || err.message : String(err));
+    // Global fallback: try to notify user about the error
+    try {
+      const body = await req.clone().json().catch(() => null);
+      const chatId = body?.message?.chat?.id || body?.callback_query?.from?.id;
+      if (chatId) {
+        const tg = `https://api.telegram.org/bot${BOT_TOKEN}`;
+        await fetch(`${tg}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text: "⚠️ Произошла ошибка. Попробуйте /start" }),
+        });
+        // Log error to audit
+        await db.from("bot_audit_log").insert({
+          chat_id: String(chatId),
+          action: "error",
+          result: "error",
+          payload: { error: err instanceof Error ? err.message : String(err) },
+        });
+      }
+    } catch (_) { /* ignore fallback errors */ }
   }
   return new Response("OK");
 });

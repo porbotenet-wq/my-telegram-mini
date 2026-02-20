@@ -1,11 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { authenticate } from "../_shared/authMiddleware.ts";
+import { getCorsHeaders } from "../_shared/corsHeaders.ts";
 
 interface SheetRange {
   values: string[][];
@@ -27,7 +23,6 @@ async function getAccessToken(serviceAccountKey: string): Promise<string> {
   }
   const now = Math.floor(Date.now() / 1000);
 
-  // Base64url encode
   const b64url = (str: string) =>
     btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
@@ -78,7 +73,6 @@ async function getAccessToken(serviceAccountKey: string): Promise<string> {
   return tokenData.access_token;
 }
 
-// For API Key mode (read-only public sheets)
 async function readSheetWithApiKey(apiKey: string, sheetId: string, range: string): Promise<string[][]> {
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?key=${apiKey}`;
   const res = await fetch(url);
@@ -120,7 +114,6 @@ async function writeSheet(accessToken: string, sheetId: string, range: string, v
   await res.text();
 }
 
-// Table-specific sync handlers
 const tableSyncHandlers: Record<string, {
   columns: string[];
   mapRowToRecord: (row: string[], columns: string[]) => Record<string, unknown>;
@@ -185,8 +178,17 @@ const tableSyncHandlers: Record<string, {
 };
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Auth check
+  const user = await authenticate(req);
+  if (!user) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {
@@ -200,7 +202,6 @@ serve(async (req) => {
     const body = await req.json();
     const { action, sheet_id, sheet_name, target_table, range, direction, project_id } = body;
 
-    // list_configs doesn't need Google auth
     if (action === "list_configs") {
       const { data, error } = await supabase.from("sync_config").select("*").eq("is_active", true);
       if (error) throw new Error(`Failed to list configs: ${error.message}`);
@@ -220,14 +221,12 @@ serve(async (req) => {
     if (useServiceAccount) {
       accessToken = await getAccessToken(serviceAccountKey);
     } else {
-      // Treat as API Key — only read from public sheets
       if (action !== "pull") {
         throw new Error("API Key mode only supports 'pull' from public sheets. For push/sync, provide a Service Account JSON key.");
       }
     }
 
     if (action === "pull") {
-      // Pull data from Google Sheets → Supabase
       const handler = tableSyncHandlers[target_table];
       if (!handler) throw new Error(`Unsupported table: ${target_table}`);
 
@@ -253,7 +252,6 @@ serve(async (req) => {
         else processed++;
       }
 
-      // Update sync_config
       await supabase.from("sync_config").update({ last_synced_at: new Date().toISOString(), last_error: null }).eq("sheet_id", sheet_id).eq("target_table", target_table);
 
       return new Response(JSON.stringify({ success: true, rows_processed: processed }), {
@@ -262,7 +260,6 @@ serve(async (req) => {
     }
 
     if (action === "push") {
-      // Push data from Supabase → Google Sheets
       const handler = tableSyncHandlers[target_table];
       if (!handler) throw new Error(`Unsupported table: ${target_table}`);
 
@@ -286,8 +283,6 @@ serve(async (req) => {
     }
 
     if (action === "sync") {
-      // Bidirectional: pull then push
-      // First pull
       const handler = tableSyncHandlers[target_table];
       if (!handler) throw new Error(`Unsupported table: ${target_table}`);
 
@@ -303,7 +298,6 @@ serve(async (req) => {
         if (!error) pulled++;
       }
 
-      // Then push
       let query = supabase.from(target_table).select("*");
       if (project_id) query = query.eq("project_id", project_id);
       const { data } = await query;
@@ -320,9 +314,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-
-
 
     throw new Error(`Unknown action: ${action}`);
   } catch (error: unknown) {

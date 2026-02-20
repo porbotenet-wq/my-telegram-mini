@@ -4,11 +4,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { authenticate } from "../_shared/authMiddleware.ts";
+import { getCorsHeaders } from "../_shared/corsHeaders.ts";
 
 const C1_URL  = Deno.env.get("C1_BASE_URL") || "";
 const C1_USER = Deno.env.get("C1_USERNAME") || "";
@@ -62,7 +59,6 @@ async function c1Post<T>(endpoint: string, body: unknown): Promise<T | null> {
   }
 }
 
-// ── Sync log ──────────────────────────────────────────────────
 async function logSync(
   direction: "1c_to_app" | "app_to_1c",
   entity: string,
@@ -79,10 +75,6 @@ async function logSync(
     synced_at: new Date().toISOString(),
   });
 }
-
-// ═══════════════════════════════════════════════════════════════
-// 1С → STSphera
-// ═══════════════════════════════════════════════════════════════
 
 function mapMaterialStatus(status1c: string): string {
   const map: Record<string, string> = {
@@ -186,10 +178,6 @@ async function syncPlanFrom1C() {
   return { synced, errors };
 }
 
-// ═══════════════════════════════════════════════════════════════
-// STSphera → 1С
-// ═══════════════════════════════════════════════════════════════
-
 async function pushFactTo1C() {
   const since = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
   const { data: rows } = await db.from("plan_fact")
@@ -285,7 +273,16 @@ async function pushOrderStatusTo1C() {
 // MAIN
 // ═══════════════════════════════════════════════════════════════
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  // Auth check
+  const user = await authenticate(req);
+  if (!user) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   const start = Date.now();
   const results: Record<string, unknown> = {};

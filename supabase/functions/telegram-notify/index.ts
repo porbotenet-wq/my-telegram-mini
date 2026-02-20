@@ -1,21 +1,15 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { authenticate } from "../_shared/authMiddleware.ts";
+import { getCorsHeaders } from "../_shared/corsHeaders.ts";
 import {
   sendMessage,
   inlineKeyboard,
   buildCallback,
 } from "../_shared/botUtils.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
-
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// ── Types ────────────────────────────────────────────────────────────
 
 type NotifyType =
   | "alert"
@@ -34,8 +28,6 @@ interface NotifyPayload {
   entity_id?: string;
 }
 
-// ── Icon map ─────────────────────────────────────────────────────────
-
 const ICON: Record<NotifyType, string> = {
   alert: "🚨",
   report_missing: "📵",
@@ -44,18 +36,14 @@ const ICON: Record<NotifyType, string> = {
   custom: "📢",
 };
 
-// ── Resolve recipients ───────────────────────────────────────────────
-
 async function resolveChatIds(
   targetChatIds?: (number | string)[],
   targetRole?: string,
 ): Promise<(number | string)[]> {
-  // Direct chat ids take priority
   if (targetChatIds && targetChatIds.length > 0) {
     return targetChatIds;
   }
 
-  // Fallback: look up by role in profiles
   if (targetRole) {
     const { data, error } = await supabase
       .from("profiles")
@@ -72,14 +60,10 @@ async function resolveChatIds(
   return [];
 }
 
-// ── Build message text ───────────────────────────────────────────────
-
 function buildText(type: NotifyType, title: string, body: string): string {
   const icon = ICON[type];
   return `${icon} <b>${title}</b>\n\n${body}`;
 }
-
-// ── Build inline buttons per type ────────────────────────────────────
 
 function buildButtons(type: NotifyType, entityId?: string) {
   const eid = entityId ?? "0";
@@ -131,11 +115,18 @@ function buildButtons(type: NotifyType, entityId?: string) {
   }
 }
 
-// ── Main handler ─────────────────────────────────────────────────────
-
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Auth check
+  const user = await authenticate(req);
+  if (!user) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   if (req.method !== "POST") {
@@ -149,7 +140,6 @@ Deno.serve(async (req) => {
     const payload: NotifyPayload = await req.json();
     const { type, project_id, title, body, target_chat_ids, target_role, entity_id } = payload;
 
-    // 1. Resolve recipients
     const chatIds = await resolveChatIds(target_chat_ids, target_role);
     const total = chatIds.length;
 
@@ -160,11 +150,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 2. Build message text and buttons
     const text = buildText(type, title, body);
     const replyMarkup = buildButtons(type, entity_id);
 
-    // 3. Send to all recipients
     let sent = 0;
     let failed = 0;
 
@@ -187,17 +175,13 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 4. Log notification
     await supabase.from("telegram_notification_log").insert({
       project_id,
       event_type: type,
       success: failed === 0,
       message_preview: text.slice(0, 200),
-      recipients_total: total,
-      recipients_sent: sent,
     }).then(() => {});
 
-    // 5. Return result
     return new Response(
       JSON.stringify({ sent, failed, total }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
