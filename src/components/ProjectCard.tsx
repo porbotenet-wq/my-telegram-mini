@@ -10,17 +10,17 @@ interface ProjectCardProps {
 }
 
 const workTypeLabels: Record<string, { text: string; cls: string }> = {
-  spk: { text: "СПК", cls: "bg-primary/12 text-primary" },
-  nvf: { text: "НВФ", cls: "bg-info/12 text-info" },
-  both: { text: "НВФ + СПК", cls: "bg-warning/12 text-warning" },
+  spk: { text: "СПК", cls: "bg-primary/12 text-primary border border-primary/20" },
+  nvf: { text: "НВФ", cls: "bg-info/12 text-info border border-info/20" },
+  both: { text: "НВФ + СПК", cls: "bg-warning/12 text-warning border border-warning/20" },
 };
 
 const InfoRow = ({ label, value }: { label: string; value: string | null }) => {
   if (!value) return null;
   return (
-    <div className="flex justify-between items-start py-1.5 border-b border-border last:border-0">
-      <span className="text-[10px] text-t3 flex-shrink-0 w-28">{label}</span>
-      <span className="text-[10px] text-t1 font-semibold text-right">{value}</span>
+    <div className="flex justify-between items-start py-2 border-b border-border last:border-0">
+      <span className="text-[10px] text-muted-foreground flex-shrink-0 w-28">{label}</span>
+      <span className="text-[10px] text-foreground font-semibold text-right">{value}</span>
     </div>
   );
 };
@@ -51,7 +51,7 @@ const ProjectCard = ({ projectId, onBack }: ProjectCardProps) => {
   }
 
   if (!project) {
-    return <div className="text-center py-8 text-t3 text-[11px]">Проект не найден</div>;
+    return <div className="text-center py-8 text-muted-foreground text-[11px]">Проект не найден</div>;
   }
 
   const wt = workTypeLabels[project.work_type] || workTypeLabels.spk;
@@ -59,28 +59,30 @@ const ProjectCard = ({ projectId, onBack }: ProjectCardProps) => {
 
   return (
     <div className="animate-fade-in p-2.5">
-      <button onClick={onBack} className="text-[11px] text-t2 mb-3 hover:text-primary transition-colors">
+      <button onClick={onBack} className="text-[11px] text-muted-foreground mb-3 hover:text-primary transition-colors">
         ← К списку объектов
       </button>
 
-      <div className="bg-bg2 border border-border rounded-lg p-3.5 mb-2.5">
+      {/* Заголовок проекта */}
+      <div className="bg-card border border-border rounded-lg p-3.5 mb-2.5">
         <div className="flex items-start justify-between mb-2">
           <div>
-            <div className="text-[14px] font-bold mb-0.5">{project.name}</div>
-            {project.code && <div className="font-mono text-[10px] text-t3">{project.code}</div>}
+            <div className="text-[14px] font-bold text-foreground mb-0.5">{project.name}</div>
+            {project.code && <div className="font-mono text-[10px] text-muted-foreground">{project.code}</div>}
           </div>
           <span className={`text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded ${wt.cls}`}>{wt.text}</span>
         </div>
         {(project.city || project.address) && (
-          <div className="text-[10px] text-t2 mb-1">📍 {[project.city, project.address].filter(Boolean).join(", ")}</div>
+          <div className="text-[10px] text-muted-foreground mb-1">📍 {[project.city, project.address].filter(Boolean).join(", ")}</div>
         )}
         {project.start_date && project.end_date && (
-          <div className="text-[10px] text-t2 mb-1">📅 {project.start_date} — {project.end_date}</div>
+          <div className="text-[10px] text-muted-foreground mb-1">📅 {project.start_date} — {project.end_date}</div>
         )}
       </div>
 
-      <div className="bg-bg2 border border-border rounded-lg p-3.5 mb-2.5">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-t3 mb-2 flex items-center gap-2">
+      {/* Заказчик */}
+      <div className="bg-card border border-border rounded-lg p-3.5 mb-2.5">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
           🏢 Заказчик <span className="flex-1 h-px bg-border" />
         </div>
         <InfoRow label="Компания" value={project.client_name} />
@@ -94,21 +96,22 @@ const ProjectCard = ({ projectId, onBack }: ProjectCardProps) => {
         <InfoRow label="Р/С" value={project.client_account} />
       </div>
 
+      {/* Контакты */}
       {contacts.length > 0 && (
-        <div className="bg-bg2 border border-border rounded-lg p-3.5">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-t3 mb-2 flex items-center gap-2">
+        <div className="bg-card border border-border rounded-lg p-3.5">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
             👥 Контакты <span className="flex-1 h-px bg-border" />
           </div>
           {contacts.map((c: ContactInfo, i: number) => (
-            <div key={i} className="flex items-center gap-2 py-1.5 border-b border-border last:border-0">
-              <div className="w-6 h-6 rounded-full bg-primary/12 text-primary text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+            <div key={i} className="flex items-center gap-2 py-2 border-b border-border last:border-0">
+              <div className="w-7 h-7 rounded-full bg-primary/12 text-primary text-[10px] font-bold flex items-center justify-center flex-shrink-0">
                 {(c.role || "?")[0]}
               </div>
               <div className="flex-1">
-                <div className="text-[10px] font-semibold">{c.name || "—"}</div>
-                <div className="text-[9px] text-t3">{c.role || "—"}</div>
+                <div className="text-[10px] font-semibold text-foreground">{c.name || "—"}</div>
+                <div className="text-[9px] text-muted-foreground">{c.role || "—"}</div>
               </div>
-              <div className="text-[9px] text-t2 font-mono">{c.phone || "—"}</div>
+              <div className="text-[9px] text-muted-foreground font-mono">{c.phone || "—"}</div>
             </div>
           ))}
         </div>

@@ -48,6 +48,11 @@ const PlanFact = ({ projectId }: PlanFactProps) => {
 
   const hasData = records.length > 0 || workTypes.length > 0;
 
+  // Summary stats
+  const totalPlan = records.reduce((s, r) => s + Number(r.plan_value || 0), 0);
+  const totalFact = records.reduce((s, r) => s + Number(r.fact_value || 0), 0);
+  const pct = totalPlan > 0 ? Math.round((totalFact / totalPlan) * 100) : 0;
+
   return (
     <div className="animate-fade-in p-2.5">
       {lastXp && <XpToast xp={lastXp.xp} action={lastXp.action} onDone={clearXp} />}
@@ -55,29 +60,47 @@ const PlanFact = ({ projectId }: PlanFactProps) => {
       {!hasData && (
         <div className="text-center py-8">
           <div className="text-2xl mb-2">📋</div>
-          <div className="text-[12px] text-t2 font-semibold">Нет данных план-факт</div>
-          <div className="text-[10px] text-t3 mt-1">Добавьте виды работ и данные план-факт</div>
+          <div className="text-[12px] text-foreground font-semibold">Нет данных план-факт</div>
+          <div className="text-[10px] text-muted-foreground mt-1">Добавьте виды работ и данные план-факт</div>
+        </div>
+      )}
+
+      {/* Summary cards */}
+      {hasData && (
+        <div className="grid grid-cols-3 gap-1.5 mb-2.5">
+          {[
+            { label: "План", value: totalPlan.toLocaleString("ru"), color: "hsl(var(--info))" },
+            { label: "Факт", value: totalFact.toLocaleString("ru"), color: "hsl(var(--primary))" },
+            { label: "Выполн.", value: `${pct}%`, color: pct >= 100 ? "hsl(var(--primary))" : pct > 50 ? "hsl(var(--warning))" : "hsl(var(--destructive))" },
+          ].map(s => (
+            <div key={s.label} className="bg-card border border-border rounded-lg p-2.5 text-center">
+              <div className="font-mono text-[16px] font-bold" style={{ color: s.color }}>{s.value}</div>
+              <div className="text-[8px] text-muted-foreground uppercase tracking-wider mt-0.5">{s.label}</div>
+            </div>
+          ))}
         </div>
       )}
 
       {/* Work types */}
       {workTypes.length > 0 && (
-        <div className="bg-bg2 border border-border rounded-lg p-3.5 mb-2.5">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-t3">Виды работ</span>
-          <div className="overflow-x-auto mt-3">
+        <div className="bg-card border border-border rounded-lg p-3.5 mb-2.5">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+            Виды работ <span className="flex-1 h-px bg-border" />
+          </div>
+          <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[10px]">
               <thead>
                 <tr>
                   {["Работа", "Ед.", "Объём"].map((h) => (
-                    <th key={h} className="text-left text-[8px] font-bold uppercase tracking-wide text-t3 p-1.5 border-b border-border">{h}</th>
+                    <th key={h} className="text-left text-[8px] font-bold uppercase tracking-wide text-muted-foreground p-1.5 border-b border-border">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {workTypes.map((wt) => (
-                  <tr key={wt.id}>
-                    <td className="p-2 border-b border-border font-semibold text-t1">{wt.name}</td>
-                    <td className="p-2 border-b border-border text-t2">{wt.unit}</td>
+                  <tr key={wt.id} className="hover:bg-accent/30 transition-colors">
+                    <td className="p-2 border-b border-border font-semibold text-foreground">{wt.name}</td>
+                    <td className="p-2 border-b border-border text-muted-foreground font-mono text-[9px]">{wt.unit}</td>
                     <td className="p-2 border-b border-border font-mono text-center">{wt.volume || "—"}</td>
                   </tr>
                 ))}
@@ -89,12 +112,14 @@ const PlanFact = ({ projectId }: PlanFactProps) => {
 
       {/* Photo reports per record */}
       {records.length > 0 && (
-        <div className="bg-bg2 border border-border rounded-lg p-3.5 mb-2.5">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-t3">Фото-отчёты</span>
-          <div className="mt-3 space-y-2">
+        <div className="bg-card border border-border rounded-lg p-3.5 mb-2.5">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+            Фото-отчёты <span className="flex-1 h-px bg-border" />
+          </div>
+          <div className="space-y-2">
             {records.slice(0, 5).map((r) => (
               <div key={r.id} className="border-b border-border pb-2 last:border-0">
-                <div className="text-[10px] text-t2 mb-1 font-mono">
+                <div className="text-[10px] text-muted-foreground mb-1 font-mono">
                   {new Date(r.date).toLocaleDateString("ru-RU")} · Н{r.week_number}
                 </div>
                 <PhotoUpload
@@ -119,18 +144,20 @@ const PlanFact = ({ projectId }: PlanFactProps) => {
 
       {/* Chart */}
       {chartData.length > 0 && (
-        <div className="bg-bg2 border border-border rounded-lg p-3.5">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-t3">План vs Факт по неделям</span>
-          <div className="h-[190px] mt-3">
+        <div className="bg-card border border-border rounded-lg p-3.5">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+            План vs Факт по неделям <span className="flex-1 h-px bg-border" />
+          </div>
+          <div className="h-[190px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
-                <XAxis dataKey="week" tick={{ fill: "#555570", fontSize: 8, fontFamily: "JetBrains Mono" }} />
-                <YAxis tick={{ fill: "#555570", fontSize: 8, fontFamily: "JetBrains Mono" }} />
-                <Tooltip contentStyle={{ background: "#181828", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, fontSize: 10 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsla(var(--border))" />
+                <XAxis dataKey="week" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 8, fontFamily: "JetBrains Mono" }} />
+                <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 8, fontFamily: "JetBrains Mono" }} />
+                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsla(var(--border))", borderRadius: 8, fontSize: 10, color: "hsl(var(--foreground))" }} />
                 <Legend wrapperStyle={{ fontSize: 9 }} />
-                <Bar dataKey="plan" name="План" fill="rgba(112,161,255,0.25)" radius={2} />
-                <Bar dataKey="fact" name="Факт" fill="rgba(0,212,170,0.5)" radius={2} />
+                <Bar dataKey="plan" name="План" fill="hsl(var(--info) / 0.35)" radius={2} />
+                <Bar dataKey="fact" name="Факт" fill="hsl(var(--primary) / 0.5)" radius={2} />
               </BarChart>
             </ResponsiveContainer>
           </div>
