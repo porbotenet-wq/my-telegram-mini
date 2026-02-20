@@ -1,4 +1,5 @@
 // src/components/TabBar.tsx
+// MONOLITH v3.0 — Frosted concrete tab strip with LED active indicator
 import { getAllowedTabs } from "@/data/roleConfig";
 
 interface ExtraTab {
@@ -55,7 +56,7 @@ const TabBar = ({ activeTab, onTabChange, showProjectCard, userRoles, extraTabs 
   const allTabs = [...visibleBase, ...extraMapped, ...SYSTEM_TABS];
 
   return (
-    <div className="sticky top-[49px] z-40 bg-[hsl(var(--bg0)/0.92)] backdrop-blur-md border-b border-border">
+    <div className="sticky top-14 z-40 bg-[hsl(var(--bg0)/0.92)] backdrop-blur-[20px] border-b border-border">
       <div className="flex items-center gap-0.5 px-3 py-1.5 overflow-x-auto scrollbar-none">
         {allTabs.map((tab) => {
           const isActive = activeTab === tab.id;
@@ -63,15 +64,17 @@ const TabBar = ({ activeTab, onTabChange, showProjectCard, userRoles, extraTabs 
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all duration-150 relative ${
+              className={`flex-shrink-0 relative px-3 py-2 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all duration-150 active:scale-[0.97] ${
                 isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-[hsl(var(--t2))] hover:text-[hsl(var(--t1))] hover:bg-[hsl(var(--bg2))]"
+                  ? "text-primary bg-[hsl(var(--green-dim))]"
+                  : "text-t2 hover:text-t1 hover:bg-bg2"
               }`}
+              style={{ minWidth: 56 }}
             >
               {tab.label}
+              {/* LED indicator — surgical green line */}
               {isActive && (
-                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-[2px] rounded-full bg-primary" />
+                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-[2px] rounded-full bg-primary shadow-[0_0_6px_hsl(var(--green-glow))]" />
               )}
             </button>
           );
