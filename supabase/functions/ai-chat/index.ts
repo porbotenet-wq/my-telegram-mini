@@ -1,11 +1,6 @@
 import { authenticate } from "../_shared/authMiddleware.ts";
 import { checkRateLimit } from "../_shared/rateLimit.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-telegram-init-data",
-};
+import { getCorsHeaders } from "../_shared/corsHeaders.ts";
 
 const SYSTEM_PROMPT = `Ты — STSphera AI, интеллектуальный ассистент для управления строительными фасадными проектами. 
 Ты работаешь в системе STSphera и помогаешь руководителям проектов, прорабам, снабженцам и другим специалистам.
@@ -28,6 +23,7 @@ const RATE_LIMIT = 10;
 const RATE_WINDOW_MS = 60_000;
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }

@@ -261,7 +261,7 @@ Deno.serve(async () => {
     .select("*")
     .eq("status", "pending")
     .lte("scheduled_at", now)
-    .lt("retry_count", 3)
+    .lt("attempts", 3)
     .order("priority", { ascending: false })
     .order("scheduled_at", { ascending: true })
     .limit(50);
@@ -330,14 +330,15 @@ Deno.serve(async () => {
 
     if (allSent) {
       await db.from("bot_event_queue").update({
-        status:  "sent",
-        sent_at: new Date().toISOString(),
+        status:       "sent",
+        sent_at:      new Date().toISOString(),
+        processed_at: new Date().toISOString(),
       }).eq("id", event.id);
       sent++;
     } else {
       await db.from("bot_event_queue").update({
         status:       "pending",
-        retry_count:  (event.retry_count || 0) + 1,
+        attempts:     (event.attempts || 0) + 1,
         scheduled_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
       }).eq("id", event.id);
       failed++;
