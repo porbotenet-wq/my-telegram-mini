@@ -1590,45 +1590,60 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           company_id: string | null
           created_at: string
           display_name: string
+          email: string | null
           id: string
+          last_active_at: string | null
           notification_preferences: Json | null
           onboarding_attempts_count: number
           onboarding_completed: boolean
           onboarding_completed_at: string | null
+          phone: string | null
           pin_hash: string | null
+          position: string | null
           telegram_chat_id: string | null
           telegram_username: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          avatar_url?: string | null
           company_id?: string | null
           created_at?: string
           display_name: string
+          email?: string | null
           id?: string
+          last_active_at?: string | null
           notification_preferences?: Json | null
           onboarding_attempts_count?: number
           onboarding_completed?: boolean
           onboarding_completed_at?: string | null
+          phone?: string | null
           pin_hash?: string | null
+          position?: string | null
           telegram_chat_id?: string | null
           telegram_username?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          avatar_url?: string | null
           company_id?: string | null
           created_at?: string
           display_name?: string
+          email?: string | null
           id?: string
+          last_active_at?: string | null
           notification_preferences?: Json | null
           onboarding_attempts_count?: number
           onboarding_completed?: boolean
           onboarding_completed_at?: string | null
+          phone?: string | null
           pin_hash?: string | null
+          position?: string | null
           telegram_chat_id?: string | null
           telegram_username?: string | null
           updated_at?: string
@@ -1654,30 +1669,51 @@ export type Database = {
       project_chats: {
         Row: {
           category: string
+          chat_type: string | null
           created_at: string
+          created_by: string | null
           id: string
+          last_message: string | null
+          last_message_at: string | null
           name: string
           project_id: string
+          reference_id: string | null
           sort_order: number | null
+          telegram_chat_id: string | null
           telegram_link: string
+          unread_count: number | null
         }
         Insert: {
           category: string
+          chat_type?: string | null
           created_at?: string
+          created_by?: string | null
           id?: string
+          last_message?: string | null
+          last_message_at?: string | null
           name: string
           project_id: string
+          reference_id?: string | null
           sort_order?: number | null
+          telegram_chat_id?: string | null
           telegram_link: string
+          unread_count?: number | null
         }
         Update: {
           category?: string
+          chat_type?: string | null
           created_at?: string
+          created_by?: string | null
           id?: string
+          last_message?: string | null
+          last_message_at?: string | null
           name?: string
           project_id?: string
+          reference_id?: string | null
           sort_order?: number | null
+          telegram_chat_id?: string | null
           telegram_link?: string
+          unread_count?: number | null
         }
         Relationships: [
           {
@@ -1714,6 +1750,7 @@ export type Database = {
           code: string | null
           company_id: string | null
           contacts: Json | null
+          cover_image_url: string | null
           created_at: string
           created_by: string | null
           duration_days: number | null
@@ -1745,6 +1782,7 @@ export type Database = {
           code?: string | null
           company_id?: string | null
           contacts?: Json | null
+          cover_image_url?: string | null
           created_at?: string
           created_by?: string | null
           duration_days?: number | null
@@ -1776,6 +1814,7 @@ export type Database = {
           code?: string | null
           company_id?: string | null
           contacts?: Json | null
+          cover_image_url?: string | null
           created_at?: string
           created_by?: string | null
           duration_days?: number | null
