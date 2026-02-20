@@ -207,8 +207,9 @@ async function screenDirectorMenu(chatId: number, user: BotUser, session: any) {
   const buttons = [
     [{ text: "📊 Дашборд", callback_data: "d:dash" }, { text: "🔔 Алерты", callback_data: "d:alerts" }],
     [{ text: "📦 Снабжение", callback_data: "d:supply" }, { text: "🏗️ Фасады", callback_data: "d:facades" }],
-    [{ text: "📝 Согласования", callback_data: "d:approvals" }, { text: "📋 Журналы", callback_data: "d:logs" }],
-    [{ text: "📂 Сменить проект", callback_data: "proj:list" }, { text: "⚙️ Настройки", callback_data: "c:settings" }],
+    [{ text: "📝 Согласования", callback_data: "d:approvals" }, { text: "⚙️ Процессы", callback_data: "d:workflow" }],
+    [{ text: "📋 Журналы", callback_data: "d:logs" }, { text: "⚙️ Настройки", callback_data: "c:settings" }],
+    [{ text: "📂 Сменить проект", callback_data: "proj:list" }],
     [{ text: "🚀 Открыть приложение", web_app: { url: APP_URL } }],
   ];
   await sendOrEdit(chatId, session, user.user_id, text, buttons, "IDLE", ctx);
@@ -503,8 +504,8 @@ async function screenPMMenu(chatId: number, user: BotUser, session: any) {
   const buttons = [
     [{ text: "📊 Дашборд", callback_data: "pm:dash" }, { text: "🔔 Алерты", callback_data: "pm:alerts" }],
     [{ text: "📋 Мои задачи", callback_data: "pm:tasks" }, { text: "📦 Снабжение", callback_data: "pm:supply" }],
-    [{ text: "📝 Согласования", callback_data: "pm:approvals" }, { text: "📋 Журналы", callback_data: "pm:logs" }],
-    [{ text: "✏️ Новый алерт", callback_data: "pm:alert_new" }],
+    [{ text: "📝 Согласования", callback_data: "pm:approvals" }, { text: "⚙️ Процессы", callback_data: "pm:workflow" }],
+    [{ text: "📋 Журналы", callback_data: "pm:logs" }, { text: "✏️ Новый алерт", callback_data: "pm:alert_new" }],
     [{ text: "📂 Сменить проект", callback_data: "proj:list" }, { text: "⚙️ Настройки", callback_data: "c:settings" }],
     [{ text: "🚀 Открыть приложение", web_app: { url: APP_URL } }],
   ];
@@ -655,6 +656,178 @@ async function screenForemanProgress(chatId: number, user: BotUser, session: any
     text += `<b>${f.name}</b>: ${progressBar(s.pct)} ${s.pct}%\n  ${s.totalFact}/${s.totalPlan} мод. · ${s.doneFloors}/${s.floors.length} эт.\n\n`;
   }
   await tgEdit(chatId, session.message_id, text, { inline_keyboard: [[{ text: "← Меню", callback_data: "f:menu" }]] });
+}
+
+// ══════════════════════════════════════════════════════════════
+// ЭКРАН: Бизнес-процессы (Workflow)
+// ══════════════════════════════════════════════════════════════
+const WORKFLOW_STAGES = [
+  { key: "contract", icon: "📄", label: "Договорной этап" },
+  { key: "launch", icon: "🚀", label: "Запуск проекта" },
+  { key: "design", icon: "📐", label: "Проектные работы" },
+  { key: "supply", icon: "📦", label: "Снабжение" },
+  { key: "production", icon: "🏭", label: "Производство" },
+  { key: "install", icon: "🔧", label: "Монтаж" },
+  { key: "pto", icon: "📋", label: "ПТО" },
+  { key: "control", icon: "🎯", label: "Контроль" },
+];
+
+const STAGE_MAP: Record<string, string> = {
+  contract: "Договорной этап",
+  launch: "Запуск проекта",
+  design: "Проектные работы",
+  supply: "Снабжение",
+  production: "Производство",
+  install: "Монтаж",
+  pto: "ПТО",
+  control: "Контроль",
+};
+
+async function getWorkflowTasks(projectId: string, block?: string) {
+  let query = db.from("ecosystem_tasks")
+    .select("id, code, name, status, priority, block, department, planned_date, responsible, progress")
+    .eq("project_id", projectId)
+    .order("task_number", { ascending: true });
+  if (block) query = query.eq("block", block);
+  const { data } = await query.limit(50);
+  return data || [];
+}
+
+async function screenWorkflow(chatId: number, user: BotUser, session: any) {
+  const projectId = session?.context?.project_id;
+  if (!projectId) {
+    if (isDirector(user.roles)) return screenDirectorMenu(chatId, user, session);
+    if (isPM(user.roles)) return screenPMMenu(chatId, user, session);
+    return screenForemanMenu(chatId, user, session);
+  }
+
+  const tasks = await getWorkflowTasks(projectId);
+  let text = `⚙️ <b>Бизнес-процессы</b>\n${SEP}\n`;
+
+  // Group by block
+  const byBlock: Record<string, any[]> = {};
+  for (const t of tasks) {
+    if (!byBlock[t.block]) byBlock[t.block] = [];
+    byBlock[t.block].push(t);
+  }
+
+  if (tasks.length === 0) {
+    text += "Нет задач по процессам.\n<i>Добавьте задачи в приложении → Процессы</i>";
+  } else {
+    for (const stage of WORKFLOW_STAGES) {
+      const blockTasks = byBlock[stage.label] || [];
+      if (blockTasks.length === 0) continue;
+      const done = blockTasks.filter((t: any) => t.status === "Выполнено").length;
+      const inWork = blockTasks.filter((t: any) => t.status === "В работе").length;
+      const total = blockTasks.length;
+      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+      const statusIcon = done === total ? "✅" : inWork > 0 ? "🔄" : "⏳";
+      text += `\n${stage.icon} <b>${stage.label}</b> ${statusIcon}\n`;
+      text += `${progressBar(pct)} ${pct}% (${done}/${total})\n`;
+    }
+  }
+
+  const buttons: any[][] = [];
+  // Show stage buttons for stages that have tasks
+  const stagesWithTasks = WORKFLOW_STAGES.filter(s => (byBlock[s.label] || []).length > 0);
+  for (let i = 0; i < stagesWithTasks.length; i += 2) {
+    const row: any[] = [];
+    row.push({ text: `${stagesWithTasks[i].icon} ${stagesWithTasks[i].label.slice(0, 15)}`, callback_data: `wf:stage:${stagesWithTasks[i].key}` });
+    if (stagesWithTasks[i + 1]) {
+      row.push({ text: `${stagesWithTasks[i + 1].icon} ${stagesWithTasks[i + 1].label.slice(0, 15)}`, callback_data: `wf:stage:${stagesWithTasks[i + 1].key}` });
+    }
+    buttons.push(row);
+  }
+
+  const rp = rolePrefix(user.roles);
+  buttons.push([{ text: "← Меню", callback_data: `${rp}:menu` }]);
+  await tgEdit(chatId, session.message_id, text, { inline_keyboard: buttons });
+}
+
+async function screenWorkflowStage(chatId: number, user: BotUser, session: any, stageKey: string) {
+  const projectId = session?.context?.project_id;
+  if (!projectId) return;
+  const stageName = STAGE_MAP[stageKey];
+  if (!stageName) return;
+
+  const tasks = await getWorkflowTasks(projectId, stageName);
+  const stageInfo = WORKFLOW_STAGES.find(s => s.key === stageKey);
+  let text = `${stageInfo?.icon || "⚙️"} <b>${stageName}</b>\n${SEP}\n`;
+
+  if (tasks.length === 0) {
+    text += "Нет задач на этом этапе";
+  } else {
+    const si: Record<string, string> = { "В работе": "🔄", "Ожидание": "⏳", "Выполнено": "✅", "Заблокировано": "🚫" };
+    for (const t of tasks) {
+      text += `${si[t.status] || "⏳"} <b>[${t.code}]</b> ${t.name}\n`;
+      if (t.responsible) text += `   👤 ${t.responsible}\n`;
+      if (t.planned_date) text += `   📅 ${new Date(t.planned_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}\n`;
+      text += "\n";
+    }
+  }
+
+  const buttons: any[][] = [];
+  // Only PM/Director can change status
+  if (isManager(user.roles) && tasks.length > 0) {
+    const actionable = tasks.filter((t: any) => t.status !== "Выполнено").slice(0, 3);
+    for (const t of actionable) {
+      const nextStatus = t.status === "Ожидание" ? "В работе" : "Выполнено";
+      const nextIcon = nextStatus === "В работе" ? "▶️" : "✅";
+      const label = `${nextIcon} ${t.code}: ${nextStatus}`;
+      buttons.push([{ text: label.slice(0, 40), callback_data: `wf:upd:${t.id}:${nextStatus === "В работе" ? "work" : "done"}` }]);
+    }
+  }
+
+  const rp = rolePrefix(user.roles);
+  buttons.push([{ text: "← Все процессы", callback_data: `${rp}:workflow` }]);
+  buttons.push([{ text: "← Меню", callback_data: `${rp}:menu` }]);
+  await tgEdit(chatId, session.message_id, text, { inline_keyboard: buttons });
+}
+
+async function handleWorkflowUpdate(chatId: number, user: BotUser, session: any, taskId: string, action: string) {
+  const newStatus = action === "work" ? "В работе" : "Выполнено";
+  const progress = action === "done" ? 100 : 50;
+
+  const { data: task } = await db.from("ecosystem_tasks").select("code, name, block").eq("id", taskId).maybeSingle();
+  if (!task) return;
+
+  const { error } = await db.from("ecosystem_tasks").update({
+    status: newStatus,
+    progress,
+    assigned_to: user.user_id,
+  }).eq("id", taskId);
+
+  if (error) {
+    const rp = rolePrefix(user.roles);
+    await tgEdit(chatId, session.message_id, `❌ Ошибка: ${error.message}`, { inline_keyboard: [[{ text: "← Назад", callback_data: `${rp}:workflow` }]] });
+    return;
+  }
+
+  await audit(chatId, user.user_id, `workflow:${action}`, { task_id: taskId, code: task.code, status: newStatus });
+
+  // Notify about status change
+  await db.from("bot_event_queue").insert({
+    event_type: "workflow.status_changed",
+    target_roles: ["director", "pm"],
+    project_id: session.context.project_id,
+    priority: "normal",
+    payload: {
+      task_code: task.code,
+      task_name: task.name,
+      block: task.block,
+      new_status: newStatus,
+      changed_by: user.display_name,
+    },
+    scheduled_at: new Date().toISOString(),
+  });
+
+  const icon = action === "done" ? "✅" : "▶️";
+  await tgEdit(chatId, session.message_id,
+    `${icon} <b>[${task.code}] ${task.name}</b>\n\nСтатус: <b>${newStatus}</b>`,
+    { inline_keyboard: [
+      [{ text: "← К этапу", callback_data: `wf:stage:${Object.entries(STAGE_MAP).find(([, v]) => v === task.block)?.[0] || "contract"}` }],
+      [{ text: "← Все процессы", callback_data: `${rolePrefix(user.roles)}:workflow` }],
+    ] });
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -822,6 +995,13 @@ async function handleUpdate(update: any) {
     if (data.startsWith("appr:yes:")) return handleApproval(chatId, user, session, data.slice(9), "approved");
     if (data.startsWith("appr:no:")) return handleApproval(chatId, user, session, data.slice(8), "rejected");
 
+    // ── Workflow ──
+    if (data.startsWith("wf:stage:")) return screenWorkflowStage(chatId, user, session, data.slice(9));
+    if (data.startsWith("wf:upd:")) {
+      const parts = data.split(":");
+      return handleWorkflowUpdate(chatId, user, session, parts[2], parts[3]);
+    }
+
     // ── Daily logs ──
     if (data === "log:new") return screenLogZone(chatId, user, session);
     if (data.startsWith("log:workers:")) return saveLogEntry(chatId, user, session, parseInt(data.slice(12)));
@@ -838,6 +1018,7 @@ async function handleUpdate(update: any) {
     if (data === "d:approvals") return screenApprovals(chatId, user, session);
     if (data === "d:logs") return screenDailyLogs(chatId, user, session);
     if (data === "d:alert_new") return screenAlertNew(chatId, user, session);
+    if (data === "d:workflow") return screenWorkflow(chatId, user, session);
     if (data.startsWith("d:facade:")) return screenFacadeDetail(chatId, user, session, data.slice(9));
 
     // ── PM ──
@@ -849,6 +1030,7 @@ async function handleUpdate(update: any) {
     if (data === "pm:approvals") return screenApprovals(chatId, user, session);
     if (data === "pm:logs") return screenDailyLogs(chatId, user, session);
     if (data === "pm:alert_new") return screenAlertNew(chatId, user, session);
+    if (data === "pm:workflow") return screenWorkflow(chatId, user, session);
     if (data === "pm:facades") return screenFacades(chatId, user, session);
     if (data.startsWith("pm:facade:")) return screenFacadeDetail(chatId, user, session, data.slice(10));
 
