@@ -1419,31 +1419,37 @@ export type Database = {
       }
       norm_chunks: {
         Row: {
-          chunk_index: number | null
+          chunk_index: number
           content: string
           created_at: string | null
-          document_id: string
+          document_id: string | null
           embedding: string | null
           id: string
-          section: string | null
+          metadata: Json | null
+          section_title: string | null
+          token_count: number | null
         }
         Insert: {
-          chunk_index?: number | null
+          chunk_index: number
           content: string
           created_at?: string | null
-          document_id: string
+          document_id?: string | null
           embedding?: string | null
           id?: string
-          section?: string | null
+          metadata?: Json | null
+          section_title?: string | null
+          token_count?: number | null
         }
         Update: {
-          chunk_index?: number | null
+          chunk_index?: number
           content?: string
           created_at?: string | null
-          document_id?: string
+          document_id?: string | null
           embedding?: string | null
           id?: string
-          section?: string | null
+          metadata?: Json | null
+          section_title?: string | null
+          token_count?: number | null
         }
         Relationships: [
           {
@@ -1460,34 +1466,43 @@ export type Database = {
           category: string | null
           code: string
           created_at: string | null
-          file_url: string | null
+          doc_type: string | null
           id: string
-          source_url: string | null
+          metadata: Json | null
+          raw_text: string | null
+          source: string
+          status: string | null
           title: string
-          total_chunks: number | null
           updated_at: string | null
+          url: string | null
         }
         Insert: {
           category?: string | null
           code: string
           created_at?: string | null
-          file_url?: string | null
+          doc_type?: string | null
           id?: string
-          source_url?: string | null
+          metadata?: Json | null
+          raw_text?: string | null
+          source: string
+          status?: string | null
           title: string
-          total_chunks?: number | null
           updated_at?: string | null
+          url?: string | null
         }
         Update: {
           category?: string | null
           code?: string
           created_at?: string | null
-          file_url?: string | null
+          doc_type?: string | null
           id?: string
-          source_url?: string | null
+          metadata?: Json | null
+          raw_text?: string | null
+          source?: string
+          status?: string | null
           title?: string
-          total_chunks?: number | null
           updated_at?: string | null
+          url?: string | null
         }
         Relationships: []
       }
