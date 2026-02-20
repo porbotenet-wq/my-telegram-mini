@@ -1092,9 +1092,15 @@ serve(async (req) => {
   if (req.method !== "POST") return new Response("OK");
   try {
     const update = await req.json();
+    console.log("[Bot] update received:", JSON.stringify({
+      message_text: update.message?.text,
+      chat_id: update.message?.chat?.id || update.callback_query?.from?.id,
+      callback_data: update.callback_query?.data,
+    }));
     await handleUpdate(update);
+    console.log("[Bot] update processed OK");
   } catch (err) {
-    console.error("[Bot]", err instanceof Error ? err.message : err);
+    console.error("[Bot] ERROR:", err instanceof Error ? err.stack || err.message : String(err));
   }
   return new Response("OK");
 });
